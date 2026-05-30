@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="dark" />
+    <meta
+      name="description"
+      content="aarkme is a compact unsocial media profile for curated movies, albums, books, and games."
+    />
+    <title>aarkme — unsocial media profile</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Skip to content</a>
+
+    <div class="ambient ambient-one" aria-hidden="true"></div>
+    <div class="ambient ambient-two" aria-hidden="true"></div>
+    <div class="noise" aria-hidden="true"></div>
+
+    <header class="site-header" id="siteHeader">
+      <div class="brand-lockup" aria-label="aarkme brand">
+        <a class="brand" href="./" aria-label="aarkme home">aarkme</a>
+        <span class="brand-line">unsocial media</span>
+      </div>
+
+      <nav class="header-actions" aria-label="Profile actions">
+        <span class="save-status" id="saveStatus" aria-live="polite">local</span>
+        <button class="ghost-btn public-only" type="button" data-action="enter-owner">edit</button>
+        <button class="ghost-btn edit-only" type="button" data-action="preview-public">preview</button>
+        <button class="ghost-btn preview-only" type="button" data-action="return-editor">return to editor</button>
+        <button class="solid-btn edit-only" type="button" data-action="view-public">public view</button>
+        <button class="solid-btn preview-only" type="button" data-action="view-public">exit preview</button>
+      </nav>
+    </header>
+
+    <main class="app-shell" id="main">
+      <aside class="profile-column" aria-label="Profile and editor controls">
+        <section class="glass-card profile-card" id="profileMount" aria-label="Profile"></section>
+
+        <section class="glass-card tool-card edit-only" id="themePanel" aria-labelledby="themeTitle">
+          <details class="tool-toggle">
+            <summary class="tool-summary">
+              <span>
+                <span class="eyebrow">theme editor</span>
+                <span class="tool-title" id="themeTitle">Visual settings</span>
+              </span>
+              <span class="edit-pill">open</span>
+            </summary>
+            <div class="tool-panel-scroll">
+              <div class="panel-heading compact-heading">
+                <p class="tool-copy">Adjust colors, radius, and type locally.</p>
+                <button class="tiny-btn" type="button" data-action="reset-theme">reset</button>
+              </div>
+              <div class="theme-grid" id="themeControls"></div>
+            </div>
+          </details>
+        </section>
+
+        <section class="glass-card tool-card edit-only" aria-labelledby="backupTitle">
+          <details class="tool-toggle">
+            <summary class="tool-summary">
+              <span>
+                <span class="eyebrow">backup tools</span>
+                <span class="tool-title" id="backupTitle">Export / import</span>
+              </span>
+              <span class="edit-pill">open</span>
+            </summary>
+            <div class="tool-panel-scroll">
+              <p class="tool-copy">Save or restore your local profile as a JSON file.</p>
+              <div class="backup-actions">
+                <button class="ghost-btn" type="button" data-action="export-json">export</button>
+                <button class="ghost-btn" type="button" data-action="import-json">import</button>
+                <button class="danger-btn" type="button" data-action="reset-demo">reset demo</button>
+              </div>
+            </div>
+          </details>
+          <input class="visually-hidden" id="importFile" type="file" accept="application/json,.json" />
+        </section>
+      </aside>
+
+      <section class="content-column" aria-label="Curated media profile">
+        <div id="mediaMount" class="media-mount"></div>
+      </section>
+    </main>
+
+    <template id="imageInputTemplate">
+      <label class="file-control">
+        <span>upload image</span>
+        <input type="file" accept="image/*" />
+      </label>
+    </template>
+
+    <script src="app.js" defer></script>
+  </body>
+</html>
