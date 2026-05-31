@@ -8,5 +8,11 @@
     "type": "git",
     "url": "git+https://github.com/alexandredoamarante/aarkme.git"
   },
-  "license": "ISC"
+  "license": "ISC",
+  "dependencies": {
+  },
+  "devDependencies": {
+    "@playwright/browser-chromium": "^1.60.0",
+    "@playwright/test": "^1.60.0"
+  }
 }

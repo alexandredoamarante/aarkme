@@ -197,7 +197,7 @@ const defaultState = () => ({
 const storage = new Storage(STORAGE_KEY, defaultState());
 let state = normalizeState(storage.load());
 let renderQueued = false;
-let isOwner = true; // Default to true for local mode
+let isOwner = !new URLSearchParams(window.location.search).has('u'); // True for local, false for public profiles until proven otherwise
 let profileId = null; // Supabase profile ID
 
 // Supabase Service Instance
@@ -308,6 +308,7 @@ function normalizeState(raw) {
   return {
     version: 1,
     mode: ['public', 'edit', 'preview'].includes(source.mode) ? source.mode : 'public',
+    profileNotFound: Boolean(source.profileNotFound),
     profile: {
       id: profile.id || undefined,
       name: sanitizeString(profile.name, 120) || fallback.profile.name,
@@ -339,17 +340,28 @@ const debouncedSave = debounce(async () => {
   const localOk = storage.save(state);
 
   // 2. If authenticated and not in a guest view, sync to Supabase
-  if (supabase && isOwner && profileId) {
+  if (supabase && isOwner) {
     try {
+      const user = await supabase.getCurrentUser();
+      if (!user) return;
+
       // Sync Profile
-      await supabase.saveProfile({
-        id: profileId,
-        username: state.profile.username,
+      const profileData = {
+        username: normalizeUsername(state.profile.username),
         name: state.profile.name,
         bio: state.profile.bio,
         avatar: state.profile.avatar,
         theme: state.theme,
-      });
+      };
+
+      if (profileId) {
+        profileData.id = profileId;
+      }
+
+      const savedProfile = await supabase.saveProfile(profileData);
+      if (savedProfile && !profileId) {
+        profileId = savedProfile.id;
+      }
 
       // Sync Media Items
       const syncPromises = [];
@@ -435,8 +447,16 @@ function setMode(mode) {
 function renderApp() {
   state = normalizeState(state);
   applyTheme();
-  document.body.classList.remove('mode-edit', 'mode-public', 'mode-preview');
+  document.body.classList.remove('mode-edit', 'mode-public', 'mode-preview', 'is-owner');
   document.body.classList.add(`mode-${state.mode}`);
+  if (isOwner) document.body.classList.add('is-owner');
+
+  const app = document.getElementById('app');
+  if (app) {
+    if (state.profileNotFound) app.classList.add('profile-not-found');
+    else app.classList.remove('profile-not-found');
+  }
+
   renderProfile();
   renderThemeControls();
   renderMedia();
@@ -491,6 +511,11 @@ function avatarHtml() {
 }
 
 function renderProfile() {
+  if (state.profileNotFound) {
+    profileMount.innerHTML = '';
+    return;
+  }
+
   const openStates = {};
   profileMount.querySelectorAll('details').forEach((el, index) => {
     if (el.open) openStates[index] = true;
@@ -600,6 +625,18 @@ function renderMedia() {
     const key = `${el.dataset.kind}:${el.dataset.index}`;
     if (el.open) openStates[key] = true;
   });
+
+  if (state.profileNotFound) {
+    mediaMount.innerHTML = `
+      <section class="glass-card media-section" style="text-align: center; padding: 6rem 2rem; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+        <p class="eyebrow" style="font-family: monospace;">404</p>
+        <h2 style="text-transform: lowercase; margin-bottom: 1rem;">profile not found.</h2>
+        <p style="text-transform: lowercase; opacity: 0.7; max-width: 400px; margin: 0 auto 2rem auto;">the requested username does not exist or has been made private.</p>
+        <a href="./" class="solid-btn" style="display: inline-flex; text-transform: lowercase;">go home</a>
+      </section>
+    `;
+    return;
+  }
 
   const publicMode = state.mode === 'public' || state.mode === 'preview';
   const sections = Object.entries(categories)
@@ -1076,6 +1113,11 @@ async function handleAction(action, target) {
 
 async function init() {
   // 1. Initial Render (Local/Demo)
+  // Ensure we start in public mode if we have a username param
+  const initialParams = new URLSearchParams(window.location.search);
+  if (initialParams.has('u')) {
+    state.mode = 'public';
+  }
   renderApp();
 
   // 2. Progressive Enhancement (Supabase)
@@ -1083,12 +1125,15 @@ async function init() {
   const username = params.get('u');
 
   if (supabase && supabase.client) {
+    const currentUser = await supabase.getCurrentUser();
+
     if (username) {
       try {
         showLoading(true);
         const profile = await supabase.getProfile(username);
         if (profile) {
           profileId = profile.id;
+          isOwner = currentUser && currentUser.id === profile.owner_id;
           state = normalizeState({
             ...profile,
             profile: {
@@ -1103,29 +1148,49 @@ async function init() {
               games: makeSlots(profile.media_items.filter(i => i.kind === 'games')),
             }
           });
-          const currentUser = await supabase.getCurrentUser();
-          isOwner = currentUser && currentUser.id === profile.owner_id;
-          state.mode = 'public';
+          state.mode = isOwner ? state.mode : 'public';
+          renderApp();
+        } else {
+          state.profileNotFound = true;
+          isOwner = false;
           renderApp();
         }
       } catch (error) {
         console.error('Could not load profile', error);
         showToast('Profile not found.');
+        state.profileNotFound = true;
+        isOwner = false;
+        renderApp();
       } finally {
         showLoading(false);
       }
-    } else {
-      // Check if user is logged in
+    } else if (currentUser) {
       try {
-        const user = await supabase.getCurrentUser();
-        if (user) {
-          updateAuthUI();
-          // We don't auto-redirect to cloud profile yet as per requirements
-          // "Do not implement full profile sync yet"
-          // "Do not change public profile loading yet"
+        showLoading(true);
+        const profile = await supabase.getProfileByOwnerId(currentUser.id);
+        if (profile) {
+          profileId = profile.id;
+          isOwner = true;
+          state = normalizeState({
+            ...profile,
+            profile: {
+              ...profile,
+              id: profile.id,
+              username: profile.username,
+            },
+            media: {
+              movies: makeSlots(profile.media_items.filter(i => i.kind === 'movies')),
+              albums: makeSlots(profile.media_items.filter(i => i.kind === 'albums')),
+              books: makeSlots(profile.media_items.filter(i => i.kind === 'books')),
+              games: makeSlots(profile.media_items.filter(i => i.kind === 'games')),
+            }
+          });
+          renderApp();
         }
-      } catch (e) {
-        console.warn('Auth check failed', e);
+      } catch (error) {
+        console.error('Could not load owner profile', error);
+      } finally {
+        showLoading(false);
       }
     }
   }
