@@ -49,22 +49,6 @@
     ['header', 'header', 'color'],
     ['button', 'button', 'color'],
     ['input', 'field', 'color'],
-    ['font', 'font', 'select'],
-    ['radius', 'radius', 'select'],
-  ];
-
-  const fontOptions = [
-    ['Helvetica, "Helvetica Neue", Arial, ui-sans-serif, system-ui, sans-serif', 'Helvetica bold'],
-    ['Arial, Helvetica, sans-serif', 'Helvetica-like'],
-    ['Georgia, "Times New Roman", serif', 'editorial serif'],
-    ['"Trebuchet MS", Arial, sans-serif', 'early web'],
-  ];
-
-  const radiusOptions = [
-    ['14px', 'sharp glass'],
-    ['18px', 'soft glass'],
-    ['22px', 'liquid'],
-    ['30px', 'orbital'],
   ];
 
   const defaultTheme = {
@@ -77,8 +61,6 @@
     header: '#070708',
     button: '#1b1a1d',
     input: '#0c0c10',
-    font: fontOptions[0][0],
-    radius: '22px',
   };
 
   const blankItem = () => ({
@@ -89,6 +71,7 @@
     tag: '',
     note: '',
     cover: '',
+    featured: false,
   });
 
   const makeSlots = (items = []) => {
@@ -260,16 +243,42 @@
     return String(value ?? '').slice(0, max);
   }
 
+  function normalizeRating(value) {
+    const text = String(value ?? '').trim().replace(',', '.');
+    if (!text) return '';
+
+    // Handle formats like "8/10", "8.5/10"
+    const match = text.match(/^(\d+(\.\d+)?)\/10$/);
+    if (match) {
+      const num = parseFloat(match[1]);
+      if (num >= 0 && num <= 10) return `${num}/10`;
+    }
+
+    // Handle plain numbers like "8", "8.5"
+    if (/^\d+(\.\d+)?$/.test(text)) {
+      const num = parseFloat(text);
+      if (num >= 0 && num <= 10) {
+        return `${num}/10`;
+      }
+    }
+
+    return null; // Invalid
+  }
+
   function sanitizeItem(item) {
     const source = isObject(item) ? item : {};
+    const rawRating = sanitizeString(source.rating, 24);
+    const normalized = normalizeRating(rawRating);
+
     return {
       title: sanitizeString(source.title, 160),
       creator: sanitizeString(source.creator, 160),
       year: sanitizeString(source.year, 24),
-      rating: sanitizeString(source.rating, 24),
+      rating: normalized !== null ? normalized : '',
       tag: sanitizeString(source.tag, 80),
       note: sanitizeString(source.note, 420),
       cover: sanitizeString(source.cover, 2500000),
+      featured: Boolean(source.featured),
     };
   }
 
@@ -281,8 +290,6 @@
         cleaned[key] = source[key].slice(0, 120);
       }
     });
-    if (!fontOptions.some(([value]) => value === cleaned.font)) cleaned.font = defaultTheme.font;
-    if (!radiusOptions.some(([value]) => value === cleaned.radius)) cleaned.radius = defaultTheme.radius;
     return cleaned;
   }
 
@@ -336,9 +343,9 @@
     if (render) queueRender();
   }
 
-  function announceSaved() {
+  function announceSaved(message = 'saved locally') {
     if (!saveStatus) return;
-    saveStatus.textContent = 'saved locally';
+    saveStatus.textContent = message;
     saveStatus.classList.add('is-saved');
     clearTimeout(saveTimer);
     saveTimer = setTimeout(() => {
@@ -461,32 +468,8 @@
 
   function renderThemeControls() {
     if (!themeControls) return;
-    themeControls.innerHTML = themeFields.map(([key, label, type]) => {
+    themeControls.innerHTML = themeFields.map(([key, label]) => {
       const value = state.theme[key] || defaultTheme[key];
-      if (type === 'select' && key === 'font') {
-        return `
-          <label class="theme-field">
-            <span>${escapeHtml(label)}</span>
-            <select data-theme-field="font">
-              ${fontOptions.map(([optionValue, optionLabel]) => `
-                <option value="${escapeHtml(optionValue)}" ${optionValue === value ? 'selected' : ''}>${escapeHtml(optionLabel)}</option>
-              `).join('')}
-            </select>
-          </label>
-        `;
-      }
-      if (type === 'select' && key === 'radius') {
-        return `
-          <label class="theme-field">
-            <span>${escapeHtml(label)}</span>
-            <select data-theme-field="radius">
-              ${radiusOptions.map(([optionValue, optionLabel]) => `
-                <option value="${escapeHtml(optionValue)}" ${optionValue === value ? 'selected' : ''}>${escapeHtml(optionLabel)}</option>
-              `).join('')}
-            </select>
-          </label>
-        `;
-      }
       return `
         <label class="theme-row">
           <span class="theme-field">
@@ -514,7 +497,7 @@
     const mark = compact ? meta.singular : meta.label;
     return `
       <div class="cover-wrap ${ratio}" aria-hidden="true">
-        <div class="cover-placeholder"><span class="cover-mark">${escapeHtml(mark)}</span></div>
+        <div class="cover-placeholder is-${kind}"><span class="cover-mark">${escapeHtml(mark)}</span></div>
       </div>
     `;
   }
@@ -592,7 +575,7 @@
     const tag = safeText(item.tag);
     const note = safeText(item.note);
     return `
-      <article class="media-card media-public-card">
+      <article class="media-card media-public-card ${item.featured ? 'is-featured' : ''}">
         ${coverHtml(item, kind)}
         <div class="card-copy">
           <h3 class="card-title">${escapeHtml(title)}</h3>
@@ -623,6 +606,7 @@
           <div class="summary-copy">
             <div class="summary-topline">
               <span class="index-chip">#${String(index + 1).padStart(2, '0')}</span>
+              ${item.featured ? '<span class="featured-pill">featured</span>' : ''}
               ${item.rating ? `<span class="rating-chip">${escapeHtml(item.rating)}</span>` : ''}
             </div>
             <h3 class="summary-title" data-preview="title">${escapeHtml(title)}</h3>
@@ -639,6 +623,11 @@
             </label>
             <button class="ghost-btn" type="button" data-action="remove-cover" data-kind="${escapeHtml(kind)}" data-index="${index}">remove cover</button>
             <button class="ghost-btn" type="button" data-action="clear-item" data-kind="${escapeHtml(kind)}" data-index="${index}">clear slot</button>
+            <div class="reorder-tools">
+              <button class="tiny-btn ${item.featured ? 'active' : ''}" type="button" data-action="toggle-featured" data-kind="${escapeHtml(kind)}" data-index="${index}" aria-label="Toggle featured">★</button>
+              <button class="tiny-btn" type="button" data-action="move-up" data-kind="${escapeHtml(kind)}" data-index="${index}" ${index === 0 ? 'disabled' : ''} aria-label="Move up">↑</button>
+              <button class="tiny-btn" type="button" data-action="move-down" data-kind="${escapeHtml(kind)}" data-index="${index}" ${index === MAX_ITEMS - 1 ? 'disabled' : ''} aria-label="Move down">↓</button>
+            </div>
           </div>
           <div class="field-grid two">
             <label class="field">
@@ -750,6 +739,27 @@
     reader.readAsText(file);
   }
 
+  function copyProfileLink() {
+    const url = window.location.href.split('?')[0]; // Share base URL
+    const shareData = {
+      title: `${state.profile.name} — aarkme`,
+      text: `Check out ${state.profile.name}'s media profile on aarkme.`,
+      url,
+    };
+
+    if (navigator.share && navigator.canShare && navigator.canShare(shareData)) {
+      navigator.share(shareData).catch(() => copyToClipboard(url));
+    } else {
+      copyToClipboard(url);
+    }
+  }
+
+  function copyToClipboard(text) {
+    navigator.clipboard.writeText(text)
+      .then(() => announceSaved('link copied'))
+      .catch(() => window.alert('Could not copy link.'));
+  }
+
   function enterOwnerMode() {
     setMode('edit');
   }
@@ -769,6 +779,23 @@
     state = defaultState();
     state.mode = 'edit';
     persist({ render: true });
+  }
+
+  function moveItem(kind, index, direction) {
+    const items = state.media[kind];
+    if (!items) return;
+    const newIndex = direction === 'up' ? index - 1 : index + 1;
+    if (newIndex < 0 || newIndex >= items.length) return;
+
+    // Swap
+    [items[index], items[newIndex]] = [items[newIndex], items[index]];
+    persist({ render: true });
+
+    // Try to re-open the moved item
+    requestAnimationFrame(() => {
+      const movedItem = document.querySelector(`.editor-details[data-kind="${kind}"][data-index="${newIndex}"]`);
+      if (movedItem) movedItem.open = true;
+    });
   }
 
   function handleAction(action, target) {
@@ -794,10 +821,14 @@
       case 'reset-demo':
         resetDemo();
         break;
-      case 'reset-theme':
-        state.theme = { ...defaultTheme };
-        persist({ render: true });
+      case 'reset-theme': {
+        const ok = window.confirm('Reset theme to default colors?');
+        if (ok) {
+          state.theme = { ...defaultTheme };
+          persist({ render: true });
+        }
         break;
+      }
       case 'toggle-section': {
         const kind = target.dataset.kind;
         if (categories[kind]) {
@@ -821,6 +852,34 @@
       case 'clear-item':
         clearItem(target.dataset.kind, Number(target.dataset.index));
         break;
+      case 'share-profile':
+        copyProfileLink();
+        break;
+      case 'move-up':
+        moveItem(target.dataset.kind, Number(target.dataset.index), 'up');
+        break;
+      case 'move-down':
+        moveItem(target.dataset.kind, Number(target.dataset.index), 'down');
+        break;
+      case 'toggle-featured': {
+        const { kind, index } = target.dataset;
+        const numericIndex = Number(index);
+        const isCurrentlyFeatured = state.media[kind][numericIndex].featured;
+
+        // Clear all featured across all categories
+        Object.keys(state.media).forEach((k) => {
+          state.media[k].forEach((item) => {
+            item.featured = false;
+          });
+        });
+
+        if (!isCurrentlyFeatured) {
+          state.media[kind][numericIndex].featured = true;
+        }
+
+        persist({ render: true });
+        break;
+      }
       default:
         break;
     }
@@ -855,7 +914,25 @@
       const numericIndex = Number(index);
       if (state.media[kind]?.[numericIndex]) {
         const max = mediaField === 'note' ? 420 : mediaField === 'title' || mediaField === 'creator' ? 160 : mediaField === 'tag' ? 80 : 24;
-        state.media[kind][numericIndex][mediaField] = target.value.slice(0, max);
+        let value = target.value.slice(0, max);
+
+        if (mediaField === 'rating') {
+          const normalized = normalizeRating(value);
+          if (normalized !== null) {
+            state.media[kind][numericIndex][mediaField] = normalized;
+            target.setCustomValidity('');
+          } else if (value.trim() === '') {
+            state.media[kind][numericIndex][mediaField] = '';
+            target.setCustomValidity('');
+          } else {
+            // If it's partial or invalid, we don't normalize yet but we don't block typing
+            // We'll validate more strictly on 'change' or just leave it as is if it doesn't match
+            state.media[kind][numericIndex][mediaField] = value;
+          }
+        } else {
+          state.media[kind][numericIndex][mediaField] = value;
+        }
+
         updateCardPreview(target.closest('details'));
         persist();
       }
@@ -872,6 +949,26 @@
 
   document.addEventListener('change', (event) => {
     const target = event.target;
+
+    if (target.matches('[data-media-field="rating"]')) {
+      const { kind, index } = target.dataset;
+      const numericIndex = Number(index);
+      const normalized = normalizeRating(target.value);
+      if (normalized !== null) {
+        state.media[kind][numericIndex].rating = normalized;
+        target.value = normalized;
+        target.setCustomValidity('');
+      } else if (target.value.trim() !== '') {
+        target.setCustomValidity('Please use 0-10 or X/10 format.');
+        target.reportValidity();
+      } else {
+        state.media[kind][numericIndex].rating = '';
+        target.setCustomValidity('');
+      }
+      updateCardPreview(target.closest('details'));
+      persist({ render: false });
+      return;
+    }
 
     if (target === importFile) {
       importJson(target.files?.[0]);

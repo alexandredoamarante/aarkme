@@ -634,11 +634,33 @@ textarea {
   height: 100%;
   min-height: 9rem;
   place-items: center;
-  background:
-    radial-gradient(circle at 22% 16%, color-mix(in srgb, var(--accent) 24%, transparent), transparent 25%),
-    linear-gradient(135deg, #17171d 0%, #070708 48%, #221a20 100%);
-  color: color-mix(in srgb, var(--accent) 66%, var(--muted));
+  color: color-mix(in srgb, var(--accent) 42%, var(--muted));
   isolation: isolate;
+  background: #070708;
+}
+
+.cover-placeholder.is-movies {
+  background:
+    radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 0.03), transparent),
+    linear-gradient(to bottom, #0a0a0c, #050506);
+}
+
+.cover-placeholder.is-albums {
+  background:
+    repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(255, 255, 255, 0.01) 10px, rgba(255, 255, 255, 0.01) 20px),
+    linear-gradient(135deg, #0d0d0f, #020203);
+}
+
+.cover-placeholder.is-books {
+  background:
+    linear-gradient(90deg, rgba(255, 255, 255, 0.04) 0%, transparent 12%),
+    linear-gradient(to right, #0c0c0e, #060607);
+}
+
+.cover-placeholder.is-games {
+  background:
+    radial-gradient(circle at center, rgba(255, 255, 255, 0.02) 0%, transparent 70%),
+    linear-gradient(145deg, #09090b, #030304);
 }
 
 .cover-placeholder::before,
@@ -680,6 +702,7 @@ textarea {
   letter-spacing: -0.025em;
   line-height: 1.12;
   overflow-wrap: anywhere;
+  min-height: 1.12em;
 }
 
 .card-meta,
@@ -708,7 +731,8 @@ textarea {
 
 .rating-chip,
 .tag-chip,
-.index-chip {
+.index-chip,
+.featured-pill {
   display: inline-flex;
   align-items: center;
   width: fit-content;
@@ -724,6 +748,24 @@ textarea {
 
 .rating-chip {
   color: var(--accent);
+}
+
+.featured-pill {
+  border-color: color-mix(in srgb, var(--accent) 40%, var(--border));
+  background: color-mix(in srgb, var(--accent) 15%, transparent);
+  color: var(--accent);
+  font-weight: 800;
+}
+
+.media-public-card.is-featured {
+  border-color: color-mix(in srgb, var(--accent) 35%, var(--border));
+  box-shadow: 0 0 30px color-mix(in srgb, var(--accent) 8%, transparent), var(--shadow);
+}
+
+.tiny-btn.active {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, var(--button));
 }
 
 .editor-details {
@@ -831,7 +873,14 @@ textarea {
 .editor-tools {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   gap: 0.42rem;
+}
+
+.reorder-tools {
+  display: flex;
+  gap: 0.35rem;
+  margin-left: auto;
 }
 
 .panel-heading {
@@ -907,6 +956,16 @@ body.mode-edit .tool-card.edit-only {
 
 body.mode-public .public-only {
   display: inline-flex !important;
+}
+
+body.mode-public .edit-only,
+body.mode-public .preview-only {
+  display: none !important;
+}
+
+body.mode-preview .edit-only,
+body.mode-preview .public-only {
+  display: none !important;
 }
 
 body.mode-preview .preview-only {
@@ -1012,6 +1071,7 @@ body.mode-public .app-shell {
   .site-header {
     position: static;
     align-items: stretch;
+    display: flex;
     flex-direction: column;
     gap: 0.55rem;
   }
@@ -1090,6 +1150,23 @@ body.mode-public .app-shell {
     justify-self: end;
   }
 
+}
+
+@media (max-width: 360px) {
+  .header-actions {
+    flex-direction: column;
+    align-items: stretch;
+    width: 100%;
+  }
+
+  .header-actions > * {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .save-status {
+    order: -1;
+  }
 }
 
 @media (max-width: 420px) {
@@ -1365,5 +1442,19 @@ body.mode-public .app-shell {
 
   .section-actions {
     justify-content: flex-start;
+  }
+
+  .editor-tools {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .reorder-tools {
+    margin-left: 0;
+    justify-content: space-between;
+  }
+
+  .reorder-tools button {
+    flex: 1;
   }
 }
