@@ -201,10 +201,8 @@ let isOwner = true; // Default to true for local mode
 let profileId = null; // Supabase profile ID
 
 // Supabase Service Instance
-let supabase = null;
-if (CONFIG.supabase.url && CONFIG.supabase.anonKey) {
-  supabase = new SupabaseService(CONFIG.supabase);
-}
+// Always instantiate so it can lazily resolve config at runtime
+const supabase = new SupabaseService(CONFIG.supabase);
 
 const profileMount = document.getElementById('profileMount');
 const mediaMount = document.getElementById('mediaMount');
