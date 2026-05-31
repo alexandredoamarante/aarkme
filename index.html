@@ -10,6 +10,7 @@
     />
     <title>aarkme — unsocial media profile</title>
     <link rel="stylesheet" href="styles.css" />
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   </head>
   <body>
     <a class="skip-link" href="#main">Skip to content</a>
@@ -17,6 +18,11 @@
     <div class="ambient ambient-one" aria-hidden="true"></div>
     <div class="ambient ambient-two" aria-hidden="true"></div>
     <div class="noise" aria-hidden="true"></div>
+
+    <div id="loadingOverlay" class="loading-overlay" hidden>
+      <div class="loader"></div>
+    </div>
+    <div id="toastContainer" class="toast-container"></div>
 
     <header class="site-header" id="siteHeader">
       <div class="brand-lockup" aria-label="aarkme brand">
@@ -27,6 +33,9 @@
 
       <nav class="header-actions" aria-label="Profile actions">
         <button class="ghost-btn" type="button" data-action="share-profile" title="Share profile">share</button>
+        <div id="authStatus" class="auth-status-chip" hidden></div>
+        <button id="signInBtn" class="ghost-btn" type="button" data-action="sign-in" hidden>sign in</button>
+        <button id="signOutBtn" class="ghost-btn" type="button" data-action="sign-out" hidden>sign out</button>
         <span class="save-status" id="saveStatus" aria-live="polite">local</span>
         <button class="ghost-btn public-only" type="button" data-action="enter-owner">edit</button>
         <button class="ghost-btn edit-only" type="button" data-action="preview-public">preview</button>
@@ -93,6 +102,6 @@
       </label>
     </template>
 
-    <script src="app.js" defer></script>
+    <script src="app.js" type="module"></script>
   </body>
 </html>

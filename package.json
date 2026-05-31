@@ -1,0 +1,12 @@
+{
+  "name": "aarkme",
+  "version": "1.0.0",
+  "private": true,
+  "description": "aarkme is a compact, curated profile for your favorite movies, albums, books, and games.",
+  "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/alexandredoamarante/aarkme.git"
+  },
+  "license": "ISC"
+}
