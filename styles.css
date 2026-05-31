@@ -953,12 +953,12 @@ textarea {
   display: none !important;
 }
 
-body.mode-edit.is-owner .edit-only {
+body.mode-edit .edit-only {
   display: flex !important;
 }
 
-body.mode-edit.is-owner section.edit-only,
-body.mode-edit.is-owner .tool-card.edit-only {
+body.mode-edit section.edit-only,
+body.mode-edit .tool-card.edit-only {
   display: block !important;
 }
 
@@ -1291,88 +1291,6 @@ body.mode-public .app-shell {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
   }
-}
-
-/* Modal & Auth UI */
-.modal-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 2000;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 1.5rem;
-  background: rgba(0, 0, 0, 0.4);
-  backdrop-filter: blur(12px);
-  animation: fade-in 240ms ease-out;
-}
-
-.modal-content {
-  width: 100%;
-  max-width: 400px;
-  padding: 1.5rem;
-  animation: slide-up 300ms ease-out;
-}
-
-.modal-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 1.25rem;
-}
-
-.modal-title {
-  margin: 0;
-  font-size: 1.5rem;
-  font-weight: 850;
-  letter-spacing: -0.04em;
-}
-
-.modal-copy {
-  margin: 0 0 1.25rem;
-  color: var(--muted);
-  font-size: 0.9rem;
-  line-height: 1.5;
-}
-
-.modal-form {
-  display: grid;
-  gap: 1.25rem;
-}
-
-.modal-actions {
-  display: flex;
-  justify-content: flex-end;
-  margin-top: 0.5rem;
-}
-
-.modal-actions .solid-btn {
-  width: 100%;
-  justify-content: center;
-}
-
-@keyframes fade-in {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
-@keyframes slide-up {
-  from { transform: translateY(20px); opacity: 0; }
-  to { transform: translateY(0); opacity: 1; }
-}
-
-/* Owner-only utility */
-.owner-only {
-  display: none !important;
-}
-
-body.is-owner .owner-only {
-  display: block !important;
-}
-
-body.is-owner button.owner-only,
-body.is-owner a.owner-only {
-  display: inline-flex !important;
 }
 
 /* targeted revision: collapsible shelves and cleaner centered header */
