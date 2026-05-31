@@ -4,7 +4,7 @@
 
 export const CONFIG = {
   supabase: {
-    url: window.AARKME_CONFIG?.supabase?.url || '',
-    anonKey: window.AARKME_CONFIG?.supabase?.anonKey || '',
+    url: (typeof window !== 'undefined' && window.AARKME_CONFIG?.supabase?.url) || '',
+    anonKey: (typeof window !== 'undefined' && window.AARKME_CONFIG?.supabase?.anonKey) || '',
   }
 };

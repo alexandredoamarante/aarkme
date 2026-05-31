@@ -55,11 +55,16 @@ export const CONFIG = {
 
 ## Deployment on Cloudflare Pages
 
+This project is a static site and should be deployed to **Cloudflare Pages** (not Workers).
+
 1. Push your code to a GitHub repository.
-2. Connect your repository to **Cloudflare Pages**.
-3. Set the **Build command** to: (leave empty, it's a static site).
-4. Set the **Build output directory** to: `.` (root).
-5. In the Cloudflare Pages dashboard, add your `config.js` (or use environment variables if you adapt the loading logic).
+2. Connect your repository to **Cloudflare Pages** in the dashboard.
+3. **Build Settings**:
+   - **Framework preset**: None
+   - **Build command**: `npm run build` (or leave empty)
+   - **Build output directory**: `.` (root)
+4. **Environment Variables**:
+   Instead of uploading `config.js`, you can provide your credentials as environment variables in the Cloudflare dashboard, though the current implementation expects a `config.js` file for ease of local use. For production, it is recommended to keep `config.js` in your `.gitignore` and create it during the build process or serve it separately.
 
 ## Architecture
 

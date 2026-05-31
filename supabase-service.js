@@ -5,7 +5,11 @@
 export class SupabaseService {
   constructor(config) {
     this.config = config;
-    this.client = window.supabase.createClient(config.url, config.anonKey);
+    if (typeof window !== 'undefined' && window.supabase && config.url && config.anonKey) {
+      this.client = window.supabase.createClient(config.url, config.anonKey);
+    } else {
+      this.client = null;
+    }
   }
 
   async getProfile(username) {
