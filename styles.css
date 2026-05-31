@@ -158,45 +158,6 @@ img {
   backdrop-filter: blur(24px) saturate(132%);
 }
 
-.brand-lockup {
-  display: flex;
-  min-width: 0;
-  align-items: center;
-  gap: 0.76rem;
-}
-
-.brand {
-  color: var(--text);
-  text-decoration: none;
-  letter-spacing: -0.085em;
-  font-size: clamp(1.45rem, 2.4vw, 2.15rem);
-  font-weight: 900;
-  line-height: 1;
-  text-transform: lowercase;
-}
-
-.brand::after {
-  content: "";
-  display: inline-block;
-  width: 0.34em;
-  height: 0.34em;
-  margin-left: 0.08em;
-  border-radius: 999px;
-  background: var(--accent);
-  box-shadow: 0 0 18px color-mix(in srgb, var(--accent) 40%, transparent);
-  vertical-align: middle;
-}
-
-.brand-line {
-  min-width: 0;
-  color: var(--muted);
-  font-size: 0.72rem;
-  font-family: var(--mono);
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  white-space: nowrap;
-}
-
 .header-actions,
 .backup-actions,
 .inline-actions {
@@ -1076,16 +1037,7 @@ body.mode-public .app-shell {
     gap: 0.55rem;
   }
 
-  .brand-lockup {
-    justify-content: space-between;
-    gap: 0.5rem;
-  }
 
-  .brand-line {
-    max-width: 13rem;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
 
   .header-actions {
     justify-content: flex-start;
@@ -1170,9 +1122,6 @@ body.mode-public .app-shell {
 }
 
 @media (max-width: 420px) {
-  .brand-line {
-    display: none;
-  }
 
   .ghost-btn,
   .solid-btn,
@@ -1262,20 +1211,23 @@ body.mode-public .app-shell {
   align-items: center;
   gap: 0.12rem;
   text-align: center;
+  position: relative;
+  display: inline-flex;
+  justify-content: center;
 }
 
-.brand {
-  font-family: Helvetica, "Helvetica Neue", Arial, ui-sans-serif, system-ui, sans-serif;
-  font-weight: 900;
-  letter-spacing: -0.09em;
+.brand-lockup::before {
+  content: "";
+  position: absolute;
+  inset: -8px -14px;
+  border-radius: 18px;
+  background: radial-gradient(circle at center, rgba(0, 0, 0, 0.48), rgba(0, 0, 0, 0.18) 58%, rgba(0, 0, 0, 0) 78%);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  pointer-events: none;
+  z-index: 1;
 }
 
-.brand-line {
-  font-family: Helvetica, "Helvetica Neue", Arial, ui-sans-serif, system-ui, sans-serif;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  line-height: 1;
-}
 
 .header-actions {
   grid-column: 3;
@@ -1411,10 +1363,6 @@ body.mode-public .app-shell {
     justify-content: center;
   }
 
-  .brand-line {
-    max-width: none;
-    white-space: normal;
-  }
 
   .header-actions {
     justify-content: center;
@@ -1432,9 +1380,6 @@ body.mode-public .app-shell {
 }
 
 @media (max-width: 420px) {
-  .brand-line {
-    display: block;
-  }
 
   .section-head {
     grid-template-columns: 1fr;
@@ -1456,5 +1401,26 @@ body.mode-public .app-shell {
 
   .reorder-tools button {
     flex: 1;
+  }
+}
+
+.brand-logo-image {
+  display: block;
+  width: clamp(180px, 24vw, 340px);
+  height: auto;
+  max-height: 74px;
+  object-fit: contain;
+  margin: 0 auto;
+  position: relative;
+  z-index: 2;
+  filter:
+    drop-shadow(0 1px 0 rgba(0, 0, 0, 0.72))
+    drop-shadow(0 0 10px rgba(0, 0, 0, 0.42));
+}
+
+@media (max-width: 700px) {
+  .brand-logo-image {
+    width: clamp(150px, 58vw, 260px);
+    max-height: 58px;
   }
 }
