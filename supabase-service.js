@@ -37,6 +37,17 @@ export class SupabaseService {
     return data;
   }
 
+  async signInWithMagicLink(email) {
+    const { data, error } = await this.client.auth.signInWithOtp({
+      email,
+      options: {
+        emailRedirectTo: window.location.origin,
+      }
+    });
+    if (error) throw error;
+    return data;
+  }
+
   async signOut() {
     const { error } = await this.client.auth.signOut();
     if (error) throw error;
