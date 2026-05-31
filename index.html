@@ -11,6 +11,7 @@
     <title>aarkme — unsocial media profile</title>
     <link rel="stylesheet" href="styles.css" />
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="supabase-config.js"></script>
   </head>
   <body>
     <a class="skip-link" href="#main">Skip to content</a>
@@ -94,6 +95,26 @@
         <div id="mediaMount" class="media-mount"></div>
       </section>
     </main>
+
+    <div id="loginModal" class="modal-overlay" hidden>
+      <div class="glass-card modal-content">
+        <div class="modal-header">
+          <p class="eyebrow">sign in</p>
+          <h2 class="modal-title">Welcome back</h2>
+          <p class="modal-copy">Enter your email to receive a magic link. No password required.</p>
+        </div>
+        <form id="loginForm" class="login-form">
+          <label class="field">
+            <span>Email address</span>
+            <input type="email" id="loginEmail" placeholder="your@email.com" required autocomplete="email" />
+          </label>
+          <div class="modal-actions">
+            <button class="ghost-btn" type="button" data-action="close-login">cancel</button>
+            <button class="solid-btn" type="submit">send link</button>
+          </div>
+        </form>
+      </div>
+    </div>
 
     <template id="imageInputTemplate">
       <label class="file-control">
