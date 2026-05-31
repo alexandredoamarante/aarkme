@@ -400,6 +400,11 @@
   }
 
   function renderProfile() {
+    const openStates = {};
+    profileMount.querySelectorAll('details').forEach((el, index) => {
+      if (el.open) openStates[index] = true;
+    });
+
     const profileEdit = state.mode === 'edit'
       ? `
         <details class="profile-editor-toggle" aria-label="Edit profile">
@@ -448,6 +453,10 @@
       <div class="bio-display" data-profile-display="bio"><p>${escapeHtml(safeText(state.profile.bio, 'A quiet catalog of favorite media.'))}</p></div>
       ${profileEdit}
     `;
+
+    profileMount.querySelectorAll('details').forEach((el, index) => {
+      if (openStates[index]) el.open = true;
+    });
   }
 
   function renderThemeControls() {
@@ -519,6 +528,12 @@
   }
 
   function renderMedia() {
+    const openStates = {};
+    mediaMount.querySelectorAll('details').forEach((el) => {
+      const key = `${el.dataset.kind}:${el.dataset.index}`;
+      if (el.open) openStates[key] = true;
+    });
+
     const publicMode = state.mode === 'public' || state.mode === 'preview';
     const sections = Object.entries(categories)
       .map(([kind, meta]) => renderMediaSection(kind, meta, publicMode))
@@ -532,6 +547,11 @@
         <p>Add movies, albums, books, and games in edit mode. Public view stays clean until the shelves are filled.</p>
       </section>
     `;
+
+    mediaMount.querySelectorAll('details').forEach((el) => {
+      const key = `${el.dataset.kind}:${el.dataset.index}`;
+      if (openStates[key]) el.open = true;
+    });
   }
 
   function renderMediaSection(kind, meta, publicMode) {
@@ -557,7 +577,6 @@
             <p>${escapeHtml(meta.hint)}</p>
           </div>
           <div class="section-actions">
-            <span class="section-count">${filled.length}/${MAX_ITEMS}</span>
             ${canToggle ? `<button class="tiny-btn section-toggle" type="button" data-action="toggle-section" data-kind="${escapeHtml(kind)}" aria-expanded="${String(!isCollapsed)}" aria-controls="${kind}Grid">${toggleLabel}</button>` : ''}
           </div>
         </div>
