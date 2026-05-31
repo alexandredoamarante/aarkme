@@ -11,6 +11,7 @@
     <title>aarkme — unsocial media profile</title>
     <link rel="stylesheet" href="styles.css" />
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="supabase-config.js"></script>
   </head>
   <body>
     <a class="skip-link" href="#main">Skip to content</a>
@@ -37,7 +38,7 @@
         <button id="signInBtn" class="ghost-btn" type="button" data-action="sign-in" hidden>sign in</button>
         <button id="signOutBtn" class="ghost-btn" type="button" data-action="sign-out" hidden>sign out</button>
         <span class="save-status" id="saveStatus" aria-live="polite">local</span>
-        <button class="ghost-btn public-only" type="button" data-action="enter-owner">edit</button>
+        <button class="ghost-btn public-only owner-only" type="button" data-action="enter-owner">edit</button>
         <button class="ghost-btn edit-only" type="button" data-action="preview-public">preview</button>
         <button class="ghost-btn preview-only" type="button" data-action="return-editor">return to editor</button>
         <button class="solid-btn edit-only" type="button" data-action="view-public">public view</button>
@@ -101,6 +102,25 @@
         <input type="file" accept="image/*" />
       </label>
     </template>
+
+    <div id="loginModal" class="modal-overlay" hidden>
+      <div class="glass-card modal-content">
+        <div class="modal-header">
+          <h2 class="modal-title">Sign In</h2>
+          <button class="tiny-btn" type="button" data-action="close-modal" aria-label="Close modal">×</button>
+        </div>
+        <form id="loginForm" class="modal-form">
+          <p class="modal-copy">Enter your email to receive a magic login link. No password required.</p>
+          <label class="field">
+            <span>Email Address</span>
+            <input type="email" id="loginEmail" placeholder="your@email.com" required autocomplete="email" />
+          </label>
+          <div class="modal-actions">
+            <button class="solid-btn" type="submit">Send Magic Link</button>
+          </div>
+        </form>
+      </div>
+    </div>
 
     <script src="app.js" type="module"></script>
   </body>

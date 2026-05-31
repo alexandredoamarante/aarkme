@@ -216,6 +216,9 @@ const signInBtn = document.getElementById('signInBtn');
 const signOutBtn = document.getElementById('signOutBtn');
 const loadingOverlay = document.getElementById('loadingOverlay');
 const toastContainer = document.getElementById('toastContainer');
+const loginModal = document.getElementById('loginModal');
+const loginForm = document.getElementById('loginForm');
+const loginEmail = document.getElementById('loginEmail');
 
 function isObject(value) {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
@@ -338,17 +341,30 @@ const debouncedSave = debounce(async () => {
   const localOk = storage.save(state);
 
   // 2. If authenticated and not in a guest view, sync to Supabase
-  if (supabase && isOwner && profileId) {
+  if (supabase && isOwner) {
     try {
+      const user = await supabase.getCurrentUser();
+      if (!user) return;
+
       // Sync Profile
-      await supabase.saveProfile({
-        id: profileId,
+      const profileData = {
         username: state.profile.username,
         name: state.profile.name,
         bio: state.profile.bio,
         avatar: state.profile.avatar,
         theme: state.theme,
-      });
+      };
+
+      if (profileId) {
+        profileData.id = profileId;
+      }
+
+      const savedProfile = await supabase.saveProfile(profileData);
+      if (!profileId && savedProfile) {
+        profileId = savedProfile.id;
+      }
+
+      if (!profileId) return;
 
       // Sync Media Items
       const syncPromises = [];
@@ -443,7 +459,10 @@ function renderApp() {
 }
 
 async function updateAuthUI() {
-  if (!supabase) return;
+  if (!supabase) {
+    signInBtn.hidden = true;
+    return;
+  }
 
   const user = await supabase.getCurrentUser();
   if (user) {
@@ -456,6 +475,8 @@ async function updateAuthUI() {
     signInBtn.hidden = false;
     signOutBtn.hidden = true;
   }
+
+  document.body.classList.toggle('is-owner', isOwner);
 }
 
 function profileInitials() {
@@ -938,24 +959,19 @@ function moveItem(kind, index, direction) {
 async function handleAction(action, target) {
   switch (action) {
     case 'sign-in': {
-      const email = window.prompt('Email:');
-      const password = window.prompt('Password:');
-      if (email && password) {
-        try {
-          showLoading(true);
-          await supabase.signIn(email, password);
-          window.location.reload();
-        } catch (error) {
-          showToast('Sign in failed: ' + error.message);
-        } finally {
-          showLoading(false);
-        }
-      }
+      if (loginModal) loginModal.hidden = false;
+      break;
+    }
+    case 'close-modal': {
+      if (loginModal) loginModal.hidden = true;
       break;
     }
     case 'sign-out': {
-      await supabase.signOut();
-      window.location.reload();
+      const ok = window.confirm('Sign out?');
+      if (ok) {
+        await supabase.signOut();
+        window.location.href = window.location.origin;
+      }
       break;
     }
     case 'enter-owner':
@@ -1091,29 +1107,58 @@ async function init() {
     } catch (error) {
       console.error('Could not load profile', error);
       showToast('Profile not found.');
+      isOwner = false;
     } finally {
       showLoading(false);
     }
   } else if (supabase) {
-    // Check if user is logged in and has a profile
+    // Visitor on root
+    isOwner = false;
     const user = await supabase.getCurrentUser();
     if (user) {
       try {
-        // Try to find profile by owner_id
-        const { data, error } = await supabase.client.from('profiles').select('*').eq('owner_id', user.id).single();
+        const { data } = await supabase.client.from('profiles').select('*').eq('owner_id', user.id).single();
         if (data) {
           profileId = data.id;
-          // Trigger a load from Supabase for the owner too
+          // Refresh with ?u= for the owner
           window.location.search = `?u=${data.username}`;
           return;
+        } else {
+          // Logged in but no profile yet
+          isOwner = true;
+          state.mode = 'edit';
+          showToast('Welcome. Set your nickname and save to create your profile.');
         }
       } catch (e) {
-        console.warn('No cloud profile found for current user');
+        isOwner = true;
+        state.mode = 'edit';
       }
     }
+  } else {
+    // Local mode
+    isOwner = true;
   }
 
   renderApp();
+}
+
+if (loginForm) {
+  loginForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const email = loginEmail.value;
+    if (!email) return;
+
+    try {
+      showLoading(true);
+      await supabase.signInWithMagicLink(email);
+      showToast('Check your email for the magic link.');
+      if (loginModal) loginModal.hidden = true;
+    } catch (error) {
+      showToast('Login failed: ' + error.message);
+    } finally {
+      showLoading(false);
+    }
+  });
 }
 
 document.addEventListener('click', (event) => {
