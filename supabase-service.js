@@ -23,12 +23,30 @@ export class SupabaseService {
         .from('profiles')
         .select('*, media_items(*)')
         .eq('username', username)
-        .single();
+        .eq('is_public', true)
+        .maybeSingle();
 
       if (error) throw error;
       return data;
     } catch (error) {
       console.error('getProfile failed:', error);
+      return null;
+    }
+  }
+
+  async getProfileByOwnerId(ownerId) {
+    if (!this.client) return null;
+    try {
+      const { data, error } = await this.client
+        .from('profiles')
+        .select('*, media_items(*)')
+        .eq('owner_id', ownerId)
+        .maybeSingle();
+
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('getProfileByOwnerId failed:', error);
       return null;
     }
   }
@@ -92,10 +110,11 @@ export class SupabaseService {
     const { data, error } = await this.client
       .from('profiles')
       .upsert({
+        is_public: true, // Default to true as per requirements
         ...profileData,
         owner_id: user.id,
         updated_at: new Date().toISOString(),
-      })
+      }, { onConflict: 'owner_id' })
       .select()
       .single();
 

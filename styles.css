@@ -998,6 +998,10 @@ body.mode-public .hero-strip {
   display: none;
 }
 
+body:not(.is-owner) .owner-only {
+  display: none !important;
+}
+
 body.mode-preview .hero-strip {
   display: none;
 }
