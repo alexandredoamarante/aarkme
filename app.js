@@ -1149,7 +1149,7 @@ if (loginForm) {
       if (loginModal) loginModal.hidden = true;
     } catch (error) {
       console.error('Sign in error', error);
-      showToast('Failed to send magic link.');
+      showToast(error.message || error.description || 'Failed to send magic link.');
     } finally {
       showLoading(false);
     }
