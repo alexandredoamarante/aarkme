@@ -1214,18 +1214,15 @@ body.mode-public .app-shell {
   position: relative;
   display: inline-flex;
   justify-content: center;
+  background: transparent;
+  box-shadow: none;
+  border: 0;
 }
 
-.brand-lockup::before {
-  content: "";
-  position: absolute;
-  inset: -8px -14px;
-  border-radius: 18px;
-  background: radial-gradient(circle at center, rgba(0, 0, 0, 0.48), rgba(0, 0, 0, 0.18) 58%, rgba(0, 0, 0, 0) 78%);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
-  pointer-events: none;
-  z-index: 1;
+.brand-lockup::before,
+.brand-lockup::after {
+  content: none;
+  display: none;
 }
 
 
@@ -1413,9 +1410,10 @@ body.mode-public .app-shell {
   margin: 0 auto;
   position: relative;
   z-index: 2;
+  background: transparent;
   filter:
-    drop-shadow(0 1px 0 rgba(0, 0, 0, 0.72))
-    drop-shadow(0 0 10px rgba(0, 0, 0, 0.42));
+    drop-shadow(0 1px 0 rgba(0, 0, 0, 0.85))
+    drop-shadow(0 0 3px rgba(0, 0, 0, 0.65));
 }
 
 @media (max-width: 700px) {
