@@ -1229,6 +1229,7 @@ body.mode-public .app-shell {
 
 }
 
+.modal-overlay,
 .loading-overlay {
   position: fixed;
   inset: 0;
@@ -1237,8 +1238,45 @@ body.mode-public .app-shell {
   align-items: center;
   justify-content: center;
   background: rgba(0, 0, 0, 0.4);
-  backdrop-filter: blur(10px);
+  backdrop-filter: blur(28px) saturate(140%);
 }
+
+.modal-content {
+  width: min(calc(100% - 2rem), 420px);
+  padding: 1.5rem;
+  display: grid;
+  gap: 1.5rem;
+}
+
+.modal-header {
+  text-align: left;
+}
+
+.modal-title {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 850;
+  letter-spacing: -0.04em;
+}
+
+.modal-copy {
+  margin: 0.4rem 0 0;
+  color: var(--muted);
+  font-size: 0.88rem;
+  line-height: 1.5;
+}
+
+.login-form {
+  display: grid;
+  gap: 1.25rem;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.6rem;
+}
+
 
 .loader {
   width: 48px;

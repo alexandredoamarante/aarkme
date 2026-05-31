@@ -216,6 +216,9 @@ const signInBtn = document.getElementById('signInBtn');
 const signOutBtn = document.getElementById('signOutBtn');
 const loadingOverlay = document.getElementById('loadingOverlay');
 const toastContainer = document.getElementById('toastContainer');
+const loginModal = document.getElementById('loginModal');
+const loginForm = document.getElementById('loginForm');
+const loginEmail = document.getElementById('loginEmail');
 
 function isObject(value) {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
@@ -443,17 +446,29 @@ function renderApp() {
 }
 
 async function updateAuthUI() {
-  if (!supabase) return;
-
-  const user = await supabase.getCurrentUser();
-  if (user) {
-    authStatus.textContent = user.email;
-    authStatus.hidden = false;
-    signInBtn.hidden = true;
-    signOutBtn.hidden = false;
-  } else {
+  if (!supabase || !supabase.client) {
     authStatus.hidden = true;
     signInBtn.hidden = false;
+    signOutBtn.hidden = true;
+    return;
+  }
+
+  try {
+    const user = await supabase.getCurrentUser();
+    if (user) {
+      authStatus.textContent = user.email;
+      authStatus.hidden = false;
+      signInBtn.hidden = true;
+      signOutBtn.hidden = false;
+    } else {
+      authStatus.hidden = true;
+      signInBtn.hidden = false;
+      signOutBtn.hidden = true;
+    }
+  } catch (error) {
+    console.error('Auth UI update failed', error);
+    authStatus.hidden = true;
+    signInBtn.hidden = true;
     signOutBtn.hidden = true;
   }
 }
@@ -938,24 +953,25 @@ function moveItem(kind, index, direction) {
 async function handleAction(action, target) {
   switch (action) {
     case 'sign-in': {
-      const email = window.prompt('Email:');
-      const password = window.prompt('Password:');
-      if (email && password) {
-        try {
-          showLoading(true);
-          await supabase.signIn(email, password);
-          window.location.reload();
-        } catch (error) {
-          showToast('Sign in failed: ' + error.message);
-        } finally {
-          showLoading(false);
-        }
+      if (loginModal) {
+        loginModal.hidden = false;
+        if (loginEmail) loginEmail.focus();
       }
       break;
     }
+    case 'close-login': {
+      if (loginModal) loginModal.hidden = true;
+      break;
+    }
     case 'sign-out': {
-      await supabase.signOut();
-      window.location.reload();
+      if (supabase) {
+        try {
+          await supabase.signOut();
+          window.location.reload();
+        } catch (error) {
+          showToast('Sign out failed');
+        }
+      }
       break;
     }
     case 'enter-owner':
@@ -1061,59 +1077,85 @@ async function handleAction(action, target) {
 }
 
 async function init() {
+  // 1. Initial Render (Local/Demo)
+  renderApp();
+
+  // 2. Progressive Enhancement (Supabase)
   const params = new URLSearchParams(window.location.search);
   const username = params.get('u');
 
-  if (username && supabase) {
-    try {
-      showLoading(true);
-      const profile = await supabase.getProfile(username);
-      if (profile) {
-        profileId = profile.id;
-        state = normalizeState({
-          ...profile,
-          profile: {
-            ...profile,
-            id: profile.id,
-            username: profile.username,
-          },
-          media: {
-            movies: makeSlots(profile.media_items.filter(i => i.kind === 'movies')),
-            albums: makeSlots(profile.media_items.filter(i => i.kind === 'albums')),
-            books: makeSlots(profile.media_items.filter(i => i.kind === 'books')),
-            games: makeSlots(profile.media_items.filter(i => i.kind === 'games')),
-          }
-        });
-        const currentUser = await supabase.getCurrentUser();
-        isOwner = currentUser && currentUser.id === profile.owner_id;
-        state.mode = 'public';
-      }
-    } catch (error) {
-      console.error('Could not load profile', error);
-      showToast('Profile not found.');
-    } finally {
-      showLoading(false);
-    }
-  } else if (supabase) {
-    // Check if user is logged in and has a profile
-    const user = await supabase.getCurrentUser();
-    if (user) {
+  if (supabase && supabase.client) {
+    if (username) {
       try {
-        // Try to find profile by owner_id
-        const { data, error } = await supabase.client.from('profiles').select('*').eq('owner_id', user.id).single();
-        if (data) {
-          profileId = data.id;
-          // Trigger a load from Supabase for the owner too
-          window.location.search = `?u=${data.username}`;
-          return;
+        showLoading(true);
+        const profile = await supabase.getProfile(username);
+        if (profile) {
+          profileId = profile.id;
+          state = normalizeState({
+            ...profile,
+            profile: {
+              ...profile,
+              id: profile.id,
+              username: profile.username,
+            },
+            media: {
+              movies: makeSlots(profile.media_items.filter(i => i.kind === 'movies')),
+              albums: makeSlots(profile.media_items.filter(i => i.kind === 'albums')),
+              books: makeSlots(profile.media_items.filter(i => i.kind === 'books')),
+              games: makeSlots(profile.media_items.filter(i => i.kind === 'games')),
+            }
+          });
+          const currentUser = await supabase.getCurrentUser();
+          isOwner = currentUser && currentUser.id === profile.owner_id;
+          state.mode = 'public';
+          renderApp();
+        }
+      } catch (error) {
+        console.error('Could not load profile', error);
+        showToast('Profile not found.');
+      } finally {
+        showLoading(false);
+      }
+    } else {
+      // Check if user is logged in
+      try {
+        const user = await supabase.getCurrentUser();
+        if (user) {
+          updateAuthUI();
+          // We don't auto-redirect to cloud profile yet as per requirements
+          // "Do not implement full profile sync yet"
+          // "Do not change public profile loading yet"
         }
       } catch (e) {
-        console.warn('No cloud profile found for current user');
+        console.warn('Auth check failed', e);
       }
     }
   }
+}
 
-  renderApp();
+if (loginForm) {
+  loginForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const email = loginEmail.value.trim();
+    if (!email) return;
+
+    if (!supabase || !supabase.client) {
+      showToast('Supabase is not configured. Check supabase-config.js.');
+      return;
+    }
+
+    try {
+      showLoading(true);
+      await supabase.signInWithOtp(email);
+      showToast('Magic link sent! Check your email.');
+      if (loginModal) loginModal.hidden = true;
+    } catch (error) {
+      console.error('Sign in error', error);
+      showToast('Failed to send magic link.');
+    } finally {
+      showLoading(false);
+    }
+  });
 }
 
 document.addEventListener('click', (event) => {

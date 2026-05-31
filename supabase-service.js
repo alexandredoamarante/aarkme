@@ -13,22 +13,34 @@ export class SupabaseService {
   }
 
   async getProfile(username) {
-    const { data, error } = await this.client
-      .from('profiles')
-      .select('*, media_items(*)')
-      .eq('username', username)
-      .single();
+    if (!this.client) return null;
+    try {
+      const { data, error } = await this.client
+        .from('profiles')
+        .select('*, media_items(*)')
+        .eq('username', username)
+        .single();
 
-    if (error) throw error;
-    return data;
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('getProfile failed:', error);
+      return null;
+    }
   }
 
   async getCurrentUser() {
-    const { data: { user } } = await this.client.auth.getUser();
-    return user;
+    if (!this.client) return null;
+    try {
+      const { data: { user } } = await this.client.auth.getUser();
+      return user;
+    } catch (error) {
+      return null;
+    }
   }
 
   async signIn(email, password) {
+    if (!this.client) throw new Error('Supabase not configured');
     const { data, error } = await this.client.auth.signInWithPassword({
       email,
       password,
@@ -37,21 +49,39 @@ export class SupabaseService {
     return data;
   }
 
+  async signInWithOtp(email) {
+    if (!this.client) throw new Error('Supabase not configured');
+    const { data, error } = await this.client.auth.signInWithOtp({
+      email,
+      options: {
+        emailRedirectTo: window.location.origin,
+      },
+    });
+    if (error) throw error;
+    return data;
+  }
+
   async signOut() {
+    if (!this.client) return;
     const { error } = await this.client.auth.signOut();
     if (error) throw error;
   }
 
   async deleteMediaItem(profileId, kind, slotIndex) {
     if (!this.client) return;
-    const { error } = await this.client
-      .from('media_items')
-      .delete()
-      .match({ profile_id: profileId, kind, slot_index: slotIndex });
-    if (error) throw error;
+    try {
+      const { error } = await this.client
+        .from('media_items')
+        .delete()
+        .match({ profile_id: profileId, kind, slot_index: slotIndex });
+      if (error) throw error;
+    } catch (error) {
+      console.error('deleteMediaItem failed:', error);
+    }
   }
 
   async saveProfile(profileData) {
+    if (!this.client) throw new Error('Supabase not configured');
     const user = await this.getCurrentUser();
     if (!user) throw new Error('Not authenticated');
 
@@ -70,6 +100,7 @@ export class SupabaseService {
   }
 
   async saveMediaItem(profileId, itemData) {
+    if (!this.client) throw new Error('Supabase not configured');
     const user = await this.getCurrentUser();
     if (!user) throw new Error('Not authenticated');
 
@@ -89,6 +120,7 @@ export class SupabaseService {
   }
 
   async uploadImage(bucket, path, file) {
+    if (!this.client) throw new Error('Supabase not configured');
     const { data, error } = await this.client.storage
       .from(bucket)
       .upload(path, file, { upsert: true });
