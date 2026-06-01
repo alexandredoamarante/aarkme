@@ -281,10 +281,14 @@ function sanitizeItem(item) {
 }
 
 function makeSlots(items = []) {
-  const cleaned = Array.from({ length: MAX_ITEMS }, (_, index) => ({
-    ...blankItem(),
-    ...(isObject(items[index]) ? items[index] : {}),
-  }));
+  const cleaned = Array.from({ length: MAX_ITEMS }, () => blankItem());
+
+  items.forEach((item) => {
+    if (isObject(item) && typeof item.slot_index === 'number' && item.slot_index >= 0 && item.slot_index < MAX_ITEMS) {
+      cleaned[item.slot_index] = { ...blankItem(), ...item };
+    }
+  });
+
   return cleaned.map(sanitizeItem);
 }
 
@@ -359,8 +363,9 @@ const debouncedSave = debounce(async () => {
       }
 
       const savedProfile = await supabase.saveProfile(profileData);
-      if (savedProfile && !profileId) {
+      if (savedProfile) {
         profileId = savedProfile.id;
+        state.profile.id = savedProfile.id;
       }
 
       // Sync Media Items
@@ -374,7 +379,9 @@ const debouncedSave = debounce(async () => {
               slot_index: index,
             }));
           } else {
-            syncPromises.push(supabase.deleteMediaItem(profileId, kind, index));
+            if (profileId) {
+              syncPromises.push(supabase.deleteMediaItem(profileId, kind, index));
+            }
           }
         });
       });
@@ -1146,8 +1153,10 @@ async function init() {
               albums: makeSlots(profile.media_items.filter(i => i.kind === 'albums')),
               books: makeSlots(profile.media_items.filter(i => i.kind === 'books')),
               games: makeSlots(profile.media_items.filter(i => i.kind === 'games')),
-            }
+            },
+            theme: profile.theme || state.theme,
           });
+          state.profile.id = profile.id;
           state.mode = isOwner ? state.mode : 'public';
           renderApp();
         } else {
@@ -1183,8 +1192,10 @@ async function init() {
               albums: makeSlots(profile.media_items.filter(i => i.kind === 'albums')),
               books: makeSlots(profile.media_items.filter(i => i.kind === 'books')),
               games: makeSlots(profile.media_items.filter(i => i.kind === 'games')),
-            }
+            },
+            theme: profile.theme || state.theme,
           });
+          state.profile.id = profile.id;
           renderApp();
         }
       } catch (error) {

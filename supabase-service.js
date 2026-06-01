@@ -134,7 +134,7 @@ export class SupabaseService {
         profile_id: profileId,
         owner_id: user.id,
         updated_at: new Date().toISOString(),
-      })
+      }, { onConflict: 'profile_id,kind,slot_index' })
       .select()
       .single();
 
