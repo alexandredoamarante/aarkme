@@ -21,7 +21,7 @@ export class SupabaseService {
     try {
       const { data, error } = await this.client
         .from('profiles')
-        .select('*, media_items(*)')
+        .select('*')
         .eq('username', username)
         .eq('is_public', true)
         .maybeSingle();
@@ -39,7 +39,7 @@ export class SupabaseService {
     try {
       const { data, error } = await this.client
         .from('profiles')
-        .select('*, media_items(*)')
+        .select('*')
         .eq('owner_id', ownerId)
         .maybeSingle();
 
@@ -48,6 +48,24 @@ export class SupabaseService {
     } catch (error) {
       console.error('getProfileByOwnerId failed:', error);
       return null;
+    }
+  }
+
+  async getMediaItems(profileId) {
+    if (!this.client) return [];
+    try {
+      const { data, error } = await this.client
+        .from('media_items')
+        .select('*')
+        .eq('profile_id', profileId)
+        .order('kind', { ascending: true })
+        .order('slot_index', { ascending: true });
+
+      if (error) throw error;
+      return data || [];
+    } catch (error) {
+      console.error('getMediaItems failed:', error);
+      return [];
     }
   }
 
