@@ -234,7 +234,8 @@ function isFilled(item) {
     safeText(item.rating) ||
     safeText(item.tag) ||
     safeText(item.note) ||
-    safeText(item.cover),
+    safeText(item.cover) ||
+    Boolean(item.featured),
   );
 }
 
@@ -269,6 +270,7 @@ function sanitizeItem(item) {
 
   return {
     id: source.id || undefined, // Keep Supabase ID if present
+    slot_index: (typeof source.slot_index === 'number') ? source.slot_index : undefined,
     title: sanitizeString(source.title, 160),
     creator: sanitizeString(source.creator, 160),
     year: sanitizeString(source.year, 24),
@@ -885,6 +887,12 @@ async function handleImageUpload(file, callback, options = {}) {
     return;
   }
 
+  // Reject clearly oversized files (5MB limit)
+  if (file.size > 5 * 1024 * 1024) {
+    window.alert('This file is too large. Please choose an image smaller than 5MB.');
+    return;
+  }
+
   try {
     showLoading(true);
     // 1. Compress before anything
@@ -966,6 +974,7 @@ function copyProfileLink() {
   }
 
   const url = window.location.origin + "/?u=" + encodeURIComponent(username);
+  console.log('[aarkme] Generated share URL:', url);
   const shareData = {
     title: `${state.profile.name} — aarkme`,
     text: `Check out ${state.profile.name}'s media profile on aarkme.`,
@@ -1196,12 +1205,17 @@ async function init() {
           console.log('[aarkme] Fetched profile:', profile);
           profileId = profile.id;
           isOwner = currentUser && currentUser.id === profile.owner_id;
+          console.log('[aarkme] Is owner:', isOwner);
 
           const mediaItems = await supabase.getMediaItems(profile.id);
-          console.log('[aarkme] Fetched mediaItems:', mediaItems);
+          console.log('[aarkme] Fetched mediaItems count:', mediaItems.length);
 
           const kindsFound = [...new Set(mediaItems.map(i => i.kind))];
           console.log('[aarkme] Media kinds found:', kindsFound.join(', '));
+
+          mediaItems.forEach((item, idx) => {
+            console.log(`[aarkme] Media Item ${idx}: kind=${item.kind}, slot=${item.slot_index}, filled=${isFilled(item)}, cover=${!!item.cover}`);
+          });
 
           if (mediaItems.length === 0) {
             console.log('[aarkme] Why empty shrine: fetched media list is empty.');
@@ -1255,22 +1269,29 @@ async function init() {
           isOwner = true;
 
           const mediaItems = await supabase.getMediaItems(profile.id);
+          console.log('[aarkme] Owner profile loaded. Media items count:', mediaItems.length);
 
-          // Merge local media with cloud media
-          // If a category is empty in the cloud, keep the local version (if it has filled items)
-          const cloudMedia = {
-            movies: mediaItems.filter(i => i.kind === 'movies'),
-            albums: mediaItems.filter(i => i.kind === 'albums'),
-            books: mediaItems.filter(i => i.kind === 'books'),
-            games: mediaItems.filter(i => i.kind === 'games'),
-          };
+          // Granular merge: for each slot, prefer cloud item if it is filled.
+          const mergedMedia = {};
+          Object.keys(categories).forEach(kind => {
+            const cloudItems = mediaItems.filter(i => i.kind === kind);
+            const localItems = state.media[kind] || makeSlots();
 
-          const mergedMedia = {
-            movies: cloudMedia.movies.length > 0 ? makeSlots(cloudMedia.movies) : state.media.movies,
-            albums: cloudMedia.albums.length > 0 ? makeSlots(cloudMedia.albums) : state.media.albums,
-            books: cloudMedia.books.length > 0 ? makeSlots(cloudMedia.books) : state.media.books,
-            games: cloudMedia.games.length > 0 ? makeSlots(cloudMedia.games) : state.media.games,
-          };
+            const slots = makeSlots(); // start with 10 blank slots
+            for (let i = 0; i < MAX_ITEMS; i++) {
+              const cloudItem = cloudItems.find(ci => ci.slot_index === i);
+              const localItem = localItems[i];
+
+              if (cloudItem && isFilled(cloudItem)) {
+                slots[i] = sanitizeItem(cloudItem);
+              } else if (localItem && isFilled(localItem)) {
+                slots[i] = localItem;
+              } else {
+                slots[i] = cloudItem ? sanitizeItem(cloudItem) : localItem;
+              }
+            }
+            mergedMedia[kind] = slots;
+          });
 
           state = normalizeState({
             ...state,
