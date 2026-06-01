@@ -7,7 +7,7 @@ create extension if not exists pgcrypto;
 -- Profiles table
 create table if not exists public.profiles (
   id uuid primary key default gen_random_uuid(),
-  owner_id uuid not null references auth.users(id) on delete cascade,
+  owner_id uuid not null unique references auth.users(id) on delete cascade,
   username text not null unique,
   name text not null default '',
   bio text not null default '',

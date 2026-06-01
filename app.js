@@ -343,57 +343,83 @@ const debouncedSave = debounce(async () => {
   // 1. Always save to LocalStorage
   const localOk = storage.save(state);
 
+  let syncAttempted = false;
+  let syncErrorMsg = null;
+
   // 2. If authenticated and not in a guest view, sync to Supabase
   if (supabase && isOwner) {
     try {
       const user = await supabase.getCurrentUser();
-      if (!user) return;
+      if (user) {
+        syncAttempted = true;
 
-      // Sync Profile
-      const profileData = {
-        username: normalizeUsername(state.profile.username),
-        name: state.profile.name,
-        bio: state.profile.bio,
-        avatar: state.profile.avatar,
-        theme: state.theme,
-      };
+        // Validate Username
+        const username = normalizeUsername(state.profile.username);
+        if (!username) {
+          syncErrorMsg = 'nickname required';
+        } else {
+          // Sync Profile
+          try {
+            const profileData = {
+              username,
+              name: state.profile.name,
+              bio: state.profile.bio,
+              avatar: state.profile.avatar,
+              theme: state.theme,
+            };
 
-      if (profileId) {
-        profileData.id = profileId;
-      }
+            const savedProfile = await supabase.saveProfile(profileData);
+            if (savedProfile) {
+              profileId = savedProfile.id;
+              state.profile.id = savedProfile.id;
+              // Persist the acquired profileId back to localStorage
+              storage.save(state);
 
-      const savedProfile = await supabase.saveProfile(profileData);
-      if (savedProfile) {
-        profileId = savedProfile.id;
-        state.profile.id = savedProfile.id;
-      }
-
-      // Sync Media Items
-      const syncPromises = [];
-      Object.entries(state.media).forEach(([kind, items]) => {
-        items.forEach((item, index) => {
-          if (isFilled(item)) {
-            syncPromises.push(supabase.saveMediaItem(profileId, {
-              ...item,
-              kind,
-              slot_index: index,
-            }));
-          } else {
-            if (profileId) {
-              syncPromises.push(supabase.deleteMediaItem(profileId, kind, index));
+              // Sync Media Items
+              const syncPromises = [];
+              Object.entries(state.media).forEach(([kind, items]) => {
+                items.forEach((item, index) => {
+                  if (isFilled(item)) {
+                    syncPromises.push(supabase.saveMediaItem(profileId, {
+                      ...item,
+                      kind,
+                      slot_index: index,
+                    }));
+                  } else {
+                    syncPromises.push(supabase.deleteMediaItem(profileId, kind, index));
+                  }
+                });
+              });
+              await Promise.all(syncPromises);
+            } else {
+              syncErrorMsg = 'profile sync failed';
+            }
+          } catch (error) {
+            console.error('Supabase sync failure details:', error);
+            if (error.code === '23505' && (error.message?.includes('username') || error.detail?.includes('username'))) {
+              syncErrorMsg = 'nickname taken';
+            } else if (error.code === '42501') {
+              syncErrorMsg = 'permission denied';
+            } else {
+              syncErrorMsg = error.message || error.description || 'sync error';
             }
           }
-        });
-      });
-      await Promise.all(syncPromises);
-
-      announceSaved('synced to cloud');
+        }
+      }
     } catch (error) {
-      console.error('Supabase sync failed', error);
-      announceSaved('saved locally (sync error)');
+      console.error('Supabase connection error:', error);
+      syncErrorMsg = 'sync error';
     }
-  } else if (localOk) {
-    announceSaved('saved locally');
+  }
+
+  if (localOk) {
+    if (syncErrorMsg) {
+      announceSaved(`saved locally (${syncErrorMsg.toLowerCase()})`);
+    } else if (syncAttempted) {
+      announceSaved('synced to cloud');
+    } else {
+      announceSaved('saved locally');
+    }
   }
 }, 1000);
 
@@ -1120,17 +1146,22 @@ async function handleAction(action, target) {
 
 async function init() {
   // 1. Initial Render (Local/Demo)
-  // Ensure we start in public mode if we have a username param
   const initialParams = new URLSearchParams(window.location.search);
-  if (initialParams.has('u')) {
+  const username = initialParams.get('u');
+
+  if (username) {
     state.mode = 'public';
+    // Clear state for public loading to avoid showing demo profile
+    state.profile.name = 'loading...';
+    state.profile.username = username;
+    state.profile.bio = '';
+    state.profile.avatar = '';
+    state.media = { movies: makeSlots(), albums: makeSlots(), books: makeSlots(), games: makeSlots() };
   }
+
   renderApp();
 
   // 2. Progressive Enhancement (Supabase)
-  const params = new URLSearchParams(window.location.search);
-  const username = params.get('u');
-
   if (supabase && supabase.client) {
     const currentUser = await supabase.getCurrentUser();
 
@@ -1204,6 +1235,10 @@ async function init() {
         showLoading(false);
       }
     }
+  } else if (username) {
+    // If we have a username but no supabase client, we can't load the cloud profile
+    state.profileNotFound = true;
+    renderApp();
   }
 }
 
