@@ -283,9 +283,10 @@ function sanitizeItem(item) {
 function makeSlots(items = []) {
   const cleaned = Array.from({ length: MAX_ITEMS }, () => blankItem());
 
-  items.forEach((item) => {
-    if (isObject(item) && typeof item.slot_index === 'number' && item.slot_index >= 0 && item.slot_index < MAX_ITEMS) {
-      cleaned[item.slot_index] = { ...blankItem(), ...item };
+  items.forEach((item, index) => {
+    const slotIndex = (isObject(item) && typeof item.slot_index === 'number') ? item.slot_index : index;
+    if (slotIndex >= 0 && slotIndex < MAX_ITEMS) {
+      cleaned[slotIndex] = { ...blankItem(), ...item };
     }
   });
 
@@ -946,7 +947,8 @@ function importJson(file) {
 }
 
 function copyProfileLink() {
-  const url = window.location.href.split('?')[0] + `?u=${normalizeUsername(state.profile.username)}`;
+  const username = normalizeUsername(state.profile.username);
+  const url = window.location.origin + "/?u=" + encodeURIComponent(username);
   const shareData = {
     title: `${state.profile.name} — aarkme`,
     text: `Check out ${state.profile.name}'s media profile on aarkme.`,
@@ -954,7 +956,7 @@ function copyProfileLink() {
   };
 
   if (navigator.share && navigator.canShare && navigator.canShare(shareData)) {
-    navigator.share(shareData).catch(() => copyToClipboard(url));
+    navigator.share(shareData).then(() => announceSaved('public profile link copied')).catch(() => copyToClipboard(url));
   } else {
     copyToClipboard(url);
   }
@@ -962,7 +964,7 @@ function copyProfileLink() {
 
 function copyToClipboard(text) {
   navigator.clipboard.writeText(text)
-    .then(() => announceSaved('link copied'))
+    .then(() => announceSaved('public profile link copied'))
     .catch(() => {
       const textArea = document.createElement('textarea');
       textArea.value = text;
@@ -970,7 +972,7 @@ function copyToClipboard(text) {
       textArea.select();
       try {
         document.execCommand('copy');
-        announceSaved('link copied');
+        announceSaved('public profile link copied');
       } catch (err) {
         showToast('Copy failed.');
       }
@@ -1147,9 +1149,11 @@ async function handleAction(action, target) {
 async function init() {
   // 1. Initial Render (Local/Demo)
   const initialParams = new URLSearchParams(window.location.search);
-  const username = initialParams.get('u');
+  const rawUsername = initialParams.get('u');
+  const username = normalizeUsername(rawUsername);
 
   if (username) {
+    console.log('[aarkme] Resolved username:', username);
     state.mode = 'public';
     // Clear state for public loading to avoid showing demo profile
     state.profile.name = 'loading...';
@@ -1170,8 +1174,25 @@ async function init() {
         showLoading(true);
         const profile = await supabase.getProfile(username);
         if (profile) {
+          console.log('[aarkme] Fetched profile id:', profile.id);
           profileId = profile.id;
           isOwner = currentUser && currentUser.id === profile.owner_id;
+
+          const mediaItems = await supabase.getMediaItems(profile.id);
+          console.log('[aarkme] Number of media_items fetched:', mediaItems.length);
+
+          const kindsFound = [...new Set(mediaItems.map(i => i.kind))];
+          console.log('[aarkme] Media kinds found:', kindsFound.join(', '));
+
+          if (mediaItems.length === 0) {
+            console.log('[aarkme] Why empty shrine: fetched media list is empty.');
+          } else {
+            const filledCount = mediaItems.filter(isFilled).length;
+            if (filledCount === 0) {
+              console.log('[aarkme] Why empty shrine: all fetched rows are completely blank.');
+            }
+          }
+
           state = normalizeState({
             ...profile,
             profile: {
@@ -1180,10 +1201,10 @@ async function init() {
               username: profile.username,
             },
             media: {
-              movies: makeSlots(profile.media_items.filter(i => i.kind === 'movies')),
-              albums: makeSlots(profile.media_items.filter(i => i.kind === 'albums')),
-              books: makeSlots(profile.media_items.filter(i => i.kind === 'books')),
-              games: makeSlots(profile.media_items.filter(i => i.kind === 'games')),
+              movies: makeSlots(mediaItems.filter(i => i.kind === 'movies')),
+              albums: makeSlots(mediaItems.filter(i => i.kind === 'albums')),
+              books: makeSlots(mediaItems.filter(i => i.kind === 'books')),
+              games: makeSlots(mediaItems.filter(i => i.kind === 'games')),
             },
             theme: profile.theme || state.theme,
           });
@@ -1191,6 +1212,7 @@ async function init() {
           state.mode = isOwner ? state.mode : 'public';
           renderApp();
         } else {
+          console.log('[aarkme] Profile not found in Supabase:', username);
           state.profileNotFound = true;
           isOwner = false;
           renderApp();
@@ -1211,6 +1233,9 @@ async function init() {
         if (profile) {
           profileId = profile.id;
           isOwner = true;
+
+          const mediaItems = await supabase.getMediaItems(profile.id);
+
           state = normalizeState({
             ...profile,
             profile: {
@@ -1219,10 +1244,10 @@ async function init() {
               username: profile.username,
             },
             media: {
-              movies: makeSlots(profile.media_items.filter(i => i.kind === 'movies')),
-              albums: makeSlots(profile.media_items.filter(i => i.kind === 'albums')),
-              books: makeSlots(profile.media_items.filter(i => i.kind === 'books')),
-              games: makeSlots(profile.media_items.filter(i => i.kind === 'games')),
+              movies: makeSlots(mediaItems.filter(i => i.kind === 'movies')),
+              albums: makeSlots(mediaItems.filter(i => i.kind === 'albums')),
+              books: makeSlots(mediaItems.filter(i => i.kind === 'books')),
+              games: makeSlots(mediaItems.filter(i => i.kind === 'games')),
             },
             theme: profile.theme || state.theme,
           });
