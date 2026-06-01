@@ -422,6 +422,7 @@ const debouncedSave = debounce(async () => {
   if (localOk) {
     if (syncErrorMsg) {
       announceSaved(`saved locally (${syncErrorMsg.toLowerCase()})`);
+      showToast(`Cloud sync error: ${syncErrorMsg}`);
     } else if (syncAttempted) {
       announceSaved('synced to cloud');
     } else {
@@ -887,26 +888,47 @@ async function handleImageUpload(file, callback, options = {}) {
     return;
   }
 
-  // Reject clearly oversized files (5MB limit)
-  if (file.size > 5 * 1024 * 1024) {
-    window.alert('This file is too large. Please choose an image smaller than 5MB.');
+  // Common image formats: jpg, png, webp, gif, avif
+  const supportedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/avif'];
+  if (file.type === 'image/heic' || file.type === 'image/heif') {
+    showToast('HEIC/HEIF files are not directly supported by all browsers. Please use JPG, PNG, or WebP.');
     return;
+  }
+  if (!supportedTypes.includes(file.type)) {
+    // We'll still try to let the browser decode it, but we warn the user.
+    console.warn('[aarkme] Attempting to upload potentially unsupported image type:', file.type);
   }
 
   try {
     showLoading(true);
+
+    const isAvatar = options.type === 'avatar';
+    const compressionOpts = isAvatar
+      ? { maxWidth: 512, maxHeight: 512, quality: 0.8, cropToSquare: true }
+      : { maxWidth: 800, maxHeight: 800, quality: 0.8 };
+
     // 1. Compress before anything
-    const dataUrl = await compressImage(file);
+    let dataUrl = await compressImage(file, compressionOpts);
+
+    // If result is still somehow massive (unlikely with canvas), try one more pass
+    if (dataUrl.length > 1.5 * 1024 * 1024) {
+      dataUrl = await compressImage(file, { ...compressionOpts, quality: 0.6 });
+    }
 
     // 2. If Supabase is enabled, upload to Storage
-    if (supabase) {
+    if (supabase && supabase.client) {
       const user = await supabase.getCurrentUser();
       if (user) {
         const bucket = 'aarkme-media';
         const timestamp = Date.now();
-        const extension = file.type.split('/')[1] || 'jpg';
         const type = options.type || 'media';
-        const path = `${user.id}/${type}-${timestamp}.${extension}`;
+        const kind = options.kind || 'unknown';
+        const slot_index = (typeof options.index === 'number') ? options.index : '0';
+
+        // Path format based on requirements
+        const path = isAvatar
+          ? `${user.id}/avatar-${timestamp}.webp`
+          : `${user.id}/covers/${kind}-${slot_index}-${timestamp}.webp`;
 
         // Convert dataUrl back to blob for upload
         const res = await fetch(dataUrl);
@@ -921,8 +943,12 @@ async function handleImageUpload(file, callback, options = {}) {
     // Fallback or Local Mode: use compressed dataUrl (base64)
     callback(dataUrl);
   } catch (error) {
-    console.error('Image upload failed', error);
-    showToast('Could not upload image.');
+    console.error('[aarkme] Image upload failed technical details:', error);
+    let msg = 'Could not upload image.';
+    if (error.message) msg = error.message;
+    if (error.description) msg = error.description;
+    if (error.status) msg += ` (${error.status})`;
+    showToast(msg);
   } finally {
     showLoading(false);
   }
@@ -1459,7 +1485,11 @@ document.addEventListener('change', (event) => {
         state.media[kind][numericIndex].cover = dataUrl;
         persist({ render: true });
       }
-    }, { type: `cover-${kind}` });
+    }, {
+      type: 'cover',
+      kind: kind,
+      index: numericIndex,
+    });
   }
 });
 
