@@ -3,6 +3,7 @@ import {
   normalizeUsername,
   debounce,
   compressImage,
+  dataURLtoBlob,
 } from './utils.js';
 import { Storage } from './storage.js';
 import { SupabaseService } from './supabase-service.js';
@@ -931,8 +932,7 @@ async function handleImageUpload(file, callback, options = {}) {
           : `${user.id}/covers/${kind}-${slot_index}-${timestamp}.webp`;
 
         // Convert dataUrl back to blob for upload
-        const res = await fetch(dataUrl);
-        const blob = await res.blob();
+        const blob = dataURLtoBlob(dataUrl);
 
         const publicUrl = await supabase.uploadImage(bucket, path, blob);
         callback(publicUrl);
