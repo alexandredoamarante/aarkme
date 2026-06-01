@@ -91,11 +91,19 @@ export class SupabaseService {
 
   async deleteMediaItem(profileId, kind, slotIndex) {
     if (!this.client) return;
+    const user = await this.getCurrentUser();
+    if (!user) return;
+
     try {
       const { error } = await this.client
         .from('media_items')
         .delete()
-        .match({ profile_id: profileId, kind, slot_index: slotIndex });
+        .match({
+          profile_id: profileId,
+          owner_id: user.id,
+          kind,
+          slot_index: slotIndex,
+        });
       if (error) throw error;
     } catch (error) {
       console.error('deleteMediaItem failed:', error);
@@ -107,11 +115,14 @@ export class SupabaseService {
     const user = await this.getCurrentUser();
     if (!user) throw new Error('Not authenticated');
 
+    // Remove id from payload if present, we rely on owner_id for conflict resolution
+    const { id, ...cleanData } = profileData;
+
     const { data, error } = await this.client
       .from('profiles')
       .upsert({
-        is_public: true, // Default to true as per requirements
-        ...profileData,
+        is_public: true,
+        ...cleanData,
         owner_id: user.id,
         updated_at: new Date().toISOString(),
       }, { onConflict: 'owner_id' })
@@ -127,10 +138,13 @@ export class SupabaseService {
     const user = await this.getCurrentUser();
     if (!user) throw new Error('Not authenticated');
 
+    // Remove id from payload if present, we rely on composite key for conflict resolution
+    const { id, ...cleanData } = itemData;
+
     const { data, error } = await this.client
       .from('media_items')
       .upsert({
-        ...itemData,
+        ...cleanData,
         profile_id: profileId,
         owner_id: user.id,
         updated_at: new Date().toISOString(),
