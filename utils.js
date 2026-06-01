@@ -116,3 +116,21 @@ export async function compressImage(file, {
     reader.onerror = () => reject(new Error('Failed to read file for compression.'));
   });
 }
+
+/**
+ * Converts a data URL to a Blob.
+ * Used to avoid fetch() calls on data: URIs which can be blocked by CSP.
+ * @param {string} dataUrl
+ * @returns {Blob}
+ */
+export function dataURLtoBlob(dataUrl) {
+  const parts = dataUrl.split(',');
+  const mime = parts[0].match(/:(.*?);/)[1];
+  const bstr = atob(parts[1]);
+  let n = bstr.length;
+  const u8arr = new Uint8Array(n);
+  while (n--) {
+    u8arr[n] = bstr.charCodeAt(n);
+  }
+  return new Blob([u8arr], { type: mime });
+}
