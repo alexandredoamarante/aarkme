@@ -668,11 +668,11 @@ function renderMedia() {
 
   if (state.profileNotFound) {
     mediaMount.innerHTML = `
-      <section class="glass-card media-section" style="text-align: center; padding: 6rem 2rem; display: flex; flex-direction: column; align-items: center; justify-content: center;">
-        <p class="eyebrow" style="font-family: monospace;">404</p>
-        <h2 style="text-transform: lowercase; margin-bottom: 1rem;">profile not found.</h2>
-        <p style="text-transform: lowercase; opacity: 0.7; max-width: 400px; margin: 0 auto 2rem auto;">the requested username does not exist or has been made private.</p>
-        <a href="./" class="solid-btn" style="display: inline-flex; text-transform: lowercase;">go home</a>
+      <section class="glass-card error-state">
+        <p class="eyebrow">404</p>
+        <h2>profile not found.</h2>
+        <p>the requested username does not exist or has been made private.</p>
+        <a href="./" class="solid-btn">go home</a>
       </section>
     `;
     return;
