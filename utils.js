@@ -43,43 +43,81 @@ export function debounce(fn, delay) {
 /**
  * Compresses an image using Canvas API.
  * @param {File|Blob} file
- * @param {number} maxWidth
- * @param {number} maxHeight
- * @param {number} quality (0 to 1)
+ * @param {Object} options
  * @returns {Promise<string>} Data URL
  */
-export async function compressImage(file, maxWidth = 1200, maxHeight = 1200, quality = 0.8) {
+export async function compressImage(file, options = {}) {
+  const {
+    maxWidth = 1200,
+    maxHeight = 1200,
+    quality = 0.8,
+    format = 'image/webp',
+    cropToSquare = false,
+  } = options;
+
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
-    reader.readAsDataURL(file);
     reader.onload = (event) => {
       const img = new Image();
-      img.src = event.target.result;
       img.onload = () => {
         const canvas = document.createElement('canvas');
         let width = img.width;
         let height = img.height;
 
-        if (width > height) {
-          if (width > maxWidth) {
-            height *= maxWidth / width;
-            width = maxWidth;
-          }
+        let sourceX = 0;
+        let sourceY = 0;
+        let sourceWidth = img.width;
+        let sourceHeight = img.height;
+
+        if (cropToSquare) {
+          const size = Math.min(width, height);
+          sourceX = (width - size) / 2;
+          sourceY = (height - size) / 2;
+          sourceWidth = size;
+          sourceHeight = size;
+          width = Math.min(size, maxWidth);
+          height = width;
         } else {
-          if (height > maxHeight) {
-            width *= maxHeight / height;
-            height = maxHeight;
+          if (width > height) {
+            if (width > maxWidth) {
+              height *= maxWidth / width;
+              width = maxWidth;
+            }
+          } else {
+            if (height > maxHeight) {
+              width *= maxHeight / height;
+              height = maxHeight;
+            }
           }
         }
 
         canvas.width = width;
         canvas.height = height;
         const ctx = canvas.getContext('2d');
-        ctx.drawImage(img, 0, 0, width, height);
-        resolve(canvas.toDataURL('image/jpeg', quality));
+
+        // Use better image smoothing
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = 'high';
+
+        ctx.drawImage(
+          img,
+          sourceX, sourceY, sourceWidth, sourceHeight,
+          0, 0, width, height
+        );
+
+        // Check if browser supports the requested format, fallback to jpeg
+        let finalFormat = format;
+        const testCanvas = document.createElement('canvas');
+        if (testCanvas.toDataURL(finalFormat).indexOf(`data:${finalFormat}`) !== 0) {
+          finalFormat = 'image/jpeg';
+        }
+
+        resolve(canvas.toDataURL(finalFormat, quality));
       };
-      img.onerror = reject;
+      img.onerror = () => reject(new Error('Failed to load image. The format might be unsupported.'));
+      img.src = event.target.result;
     };
-    reader.onerror = reject;
+    reader.onerror = () => reject(new Error('Failed to read file.'));
+    reader.readAsDataURL(file);
   });
 }

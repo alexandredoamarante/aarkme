@@ -235,7 +235,7 @@ function isFilled(item) {
     safeText(item.tag) ||
     safeText(item.note) ||
     safeText(item.cover) ||
-    Boolean(item.featured),
+    Boolean(item.featured)
   );
 }
 
@@ -887,42 +887,73 @@ async function handleImageUpload(file, callback, options = {}) {
     return;
   }
 
-  // Reject clearly oversized files (5MB limit)
-  if (file.size > 5 * 1024 * 1024) {
-    window.alert('This file is too large. Please choose an image smaller than 5MB.');
-    return;
-  }
-
   try {
     showLoading(true);
-    // 1. Compress before anything
-    const dataUrl = await compressImage(file);
+
+    const isAvatar = options.type === 'avatar';
+    const compressOptions = isAvatar ? {
+      maxWidth: 512,
+      maxHeight: 512,
+      quality: 0.8,
+      cropToSquare: true,
+      format: 'image/webp'
+    } : {
+      maxWidth: 800,
+      maxHeight: 800,
+      quality: 0.8,
+      format: 'image/webp'
+    };
+
+    // 1. First pass compression
+    let dataUrl = await compressImage(file, compressOptions);
+
+    // Check size (rough estimate from base64)
+    const base64Length = dataUrl.split(',')[1].length;
+    const sizeInBytes = base64Length * (3 / 4);
+
+    // If still > 1MB, try second pass with lower quality
+    if (sizeInBytes > 1024 * 1024) {
+      console.log('[aarkme] Image still large, retrying with lower quality');
+      dataUrl = await compressImage(file, { ...compressOptions, quality: 0.5 });
+    }
 
     // 2. If Supabase is enabled, upload to Storage
-    if (supabase) {
+    if (supabase && supabase.client) {
       const user = await supabase.getCurrentUser();
       if (user) {
         const bucket = 'aarkme-media';
         const timestamp = Date.now();
-        const extension = file.type.split('/')[1] || 'jpg';
-        const type = options.type || 'media';
-        const path = `${user.id}/${type}-${timestamp}.${extension}`;
+        const extension = 'webp';
+        let path;
+
+        if (isAvatar) {
+          path = `${user.id}/avatar-${timestamp}.${extension}`;
+        } else {
+          const kind = options.kind || 'media';
+          const slot = options.index ?? '0';
+          path = `${user.id}/covers/${kind}-${slot}-${timestamp}.${extension}`;
+        }
 
         // Convert dataUrl back to blob for upload
         const res = await fetch(dataUrl);
         const blob = await res.blob();
 
-        const publicUrl = await supabase.uploadImage(bucket, path, blob);
-        callback(publicUrl);
-        return;
+        try {
+          const publicUrl = await supabase.uploadImage(bucket, path, blob);
+          callback(publicUrl);
+          return;
+        } catch (uploadError) {
+          console.error('[aarkme] Supabase upload failed, using local fallback:', uploadError);
+          // Fall through to local fallback
+        }
       }
     }
 
     // Fallback or Local Mode: use compressed dataUrl (base64)
     callback(dataUrl);
   } catch (error) {
-    console.error('Image upload failed', error);
-    showToast('Could not upload image.');
+    console.error('[aarkme] Image processing/upload failed:', error);
+    window.alert(`Could not process image: ${error.message || 'unknown error'}`);
   } finally {
     showLoading(false);
   }
@@ -1459,7 +1490,11 @@ document.addEventListener('change', (event) => {
         state.media[kind][numericIndex].cover = dataUrl;
         persist({ render: true });
       }
-    }, { type: `cover-${kind}` });
+    }, {
+      type: 'cover',
+      kind: kind,
+      index: numericIndex
+    });
   }
 });
 
