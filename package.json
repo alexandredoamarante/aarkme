@@ -13,6 +13,7 @@
     "@playwright/browser-chromium": "^1.60.0"
   },
   "dependencies": {
-    "@playwright/test": "^1.60.0"
+    "@playwright/test": "^1.60.0",
+    "@supabase/supabase-js": "^2.106.2"
   }
 }

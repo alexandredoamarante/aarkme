@@ -622,6 +622,10 @@ textarea {
   border-radius: calc(var(--radius) / 2);
 }
 
+.media-public-card .cover-wrap img {
+  pointer-events: none;
+}
+
 .media-public-card .cover-placeholder {
   min-height: 0;
 }

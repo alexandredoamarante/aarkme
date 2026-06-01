@@ -43,12 +43,16 @@ export function debounce(fn, delay) {
 /**
  * Compresses an image using Canvas API.
  * @param {File|Blob} file
- * @param {number} maxWidth
- * @param {number} maxHeight
- * @param {number} quality (0 to 1)
+ * @param {Object} options
  * @returns {Promise<string>} Data URL
  */
-export async function compressImage(file, maxWidth = 1200, maxHeight = 1200, quality = 0.8) {
+export async function compressImage(file, {
+  maxWidth = 1200,
+  maxHeight = 1200,
+  quality = 0.8,
+  format = 'image/webp',
+  cropToSquare = false,
+} = {}) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.readAsDataURL(file);
@@ -59,27 +63,56 @@ export async function compressImage(file, maxWidth = 1200, maxHeight = 1200, qua
         const canvas = document.createElement('canvas');
         let width = img.width;
         let height = img.height;
+        let offsetX = 0;
+        let offsetY = 0;
 
-        if (width > height) {
+        if (cropToSquare) {
+          const minDim = Math.min(width, height);
+          offsetX = (width - minDim) / 2;
+          offsetY = (height - minDim) / 2;
+          width = minDim;
+          height = minDim;
+
           if (width > maxWidth) {
-            height *= maxWidth / width;
             width = maxWidth;
+            height = maxWidth;
           }
         } else {
-          if (height > maxHeight) {
-            width *= maxHeight / height;
-            height = maxHeight;
+          if (width > height) {
+            if (width > maxWidth) {
+              height *= maxWidth / width;
+              width = maxWidth;
+            }
+          } else {
+            if (height > maxHeight) {
+              width *= maxHeight / height;
+              height = maxHeight;
+            }
           }
         }
 
         canvas.width = width;
         canvas.height = height;
         const ctx = canvas.getContext('2d');
-        ctx.drawImage(img, 0, 0, width, height);
-        resolve(canvas.toDataURL('image/jpeg', quality));
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = 'high';
+
+        if (cropToSquare) {
+          ctx.drawImage(img, offsetX, offsetY, img.width - (offsetX * 2), img.height - (offsetY * 2), 0, 0, width, height);
+        } else {
+          ctx.drawImage(img, 0, 0, width, height);
+        }
+
+        // Try outputting in the requested format, falling back to jpeg if needed
+        let dataUrl = canvas.toDataURL(format, quality);
+        if (dataUrl.length < 100 && format !== 'image/jpeg') {
+          dataUrl = canvas.toDataURL('image/jpeg', quality);
+        }
+
+        resolve(dataUrl);
       };
-      img.onerror = reject;
+      img.onerror = () => reject(new Error('Failed to load image for compression.'));
     };
-    reader.onerror = reject;
+    reader.onerror = () => reject(new Error('Failed to read file for compression.'));
   });
 }
