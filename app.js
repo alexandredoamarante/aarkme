@@ -283,6 +283,10 @@ function sanitizeItem(item) {
 function makeSlots(items = []) {
   const cleaned = Array.from({ length: MAX_ITEMS }, () => blankItem());
 
+  if (items.length > 0) {
+    console.log('[aarkme] makeSlots processing items:', items.slice(0, 3));
+  }
+
   items.forEach((item, index) => {
     const slotIndex = (isObject(item) && typeof item.slot_index === 'number') ? item.slot_index : index;
     if (slotIndex >= 0 && slotIndex < MAX_ITEMS) {
@@ -678,6 +682,10 @@ function renderMedia() {
     .filter(Boolean)
     .join('');
 
+  if (!sections) {
+    console.log('[aarkme] Rendering empty shrine. Reason: No sections with filled media items were rendered.');
+  }
+
   mediaMount.innerHTML = sections || `
     <section class="glass-card empty-public">
       <p class="eyebrow">empty shrine</p>
@@ -696,7 +704,10 @@ function renderMediaSection(kind, meta, publicMode) {
   const items = state.media[kind] || makeSlots();
   const filled = items.filter(isFilled);
 
-  if (publicMode && filled.length === 0) return '';
+  if (publicMode && filled.length === 0) {
+    console.log(`[aarkme] Skipping section ${kind} in public mode. Filled count: 0.`);
+    return '';
+  }
 
   let itemsToRender;
   if (publicMode) {
@@ -948,6 +959,12 @@ function importJson(file) {
 
 function copyProfileLink() {
   const username = normalizeUsername(state.profile.username);
+
+  if (!username || username === 'nickname' || username === 'aarkme.user') {
+    showToast('Choose a username before sharing your profile.');
+    return;
+  }
+
   const url = window.location.origin + "/?u=" + encodeURIComponent(username);
   const shareData = {
     title: `${state.profile.name} — aarkme`,
@@ -956,7 +973,9 @@ function copyProfileLink() {
   };
 
   if (navigator.share && navigator.canShare && navigator.canShare(shareData)) {
-    navigator.share(shareData).then(() => announceSaved('public profile link copied')).catch(() => copyToClipboard(url));
+    navigator.share(shareData)
+      .then(() => announceSaved('public profile link copied'))
+      .catch(() => copyToClipboard(url));
   } else {
     copyToClipboard(url);
   }
@@ -1174,12 +1193,12 @@ async function init() {
         showLoading(true);
         const profile = await supabase.getProfile(username);
         if (profile) {
-          console.log('[aarkme] Fetched profile id:', profile.id);
+          console.log('[aarkme] Fetched profile:', profile);
           profileId = profile.id;
           isOwner = currentUser && currentUser.id === profile.owner_id;
 
           const mediaItems = await supabase.getMediaItems(profile.id);
-          console.log('[aarkme] Number of media_items fetched:', mediaItems.length);
+          console.log('[aarkme] Fetched mediaItems:', mediaItems);
 
           const kindsFound = [...new Set(mediaItems.map(i => i.kind))];
           console.log('[aarkme] Media kinds found:', kindsFound.join(', '));
@@ -1194,8 +1213,9 @@ async function init() {
           }
 
           state = normalizeState({
-            ...profile,
+            ...state,
             profile: {
+              ...state.profile,
               ...profile,
               id: profile.id,
               username: profile.username,
@@ -1236,19 +1256,31 @@ async function init() {
 
           const mediaItems = await supabase.getMediaItems(profile.id);
 
+          // Merge local media with cloud media
+          // If a category is empty in the cloud, keep the local version (if it has filled items)
+          const cloudMedia = {
+            movies: mediaItems.filter(i => i.kind === 'movies'),
+            albums: mediaItems.filter(i => i.kind === 'albums'),
+            books: mediaItems.filter(i => i.kind === 'books'),
+            games: mediaItems.filter(i => i.kind === 'games'),
+          };
+
+          const mergedMedia = {
+            movies: cloudMedia.movies.length > 0 ? makeSlots(cloudMedia.movies) : state.media.movies,
+            albums: cloudMedia.albums.length > 0 ? makeSlots(cloudMedia.albums) : state.media.albums,
+            books: cloudMedia.books.length > 0 ? makeSlots(cloudMedia.books) : state.media.books,
+            games: cloudMedia.games.length > 0 ? makeSlots(cloudMedia.games) : state.media.games,
+          };
+
           state = normalizeState({
-            ...profile,
+            ...state,
             profile: {
+              ...state.profile,
               ...profile,
               id: profile.id,
               username: profile.username,
             },
-            media: {
-              movies: makeSlots(mediaItems.filter(i => i.kind === 'movies')),
-              albums: makeSlots(mediaItems.filter(i => i.kind === 'albums')),
-              books: makeSlots(mediaItems.filter(i => i.kind === 'books')),
-              games: makeSlots(mediaItems.filter(i => i.kind === 'games')),
-            },
+            media: mergedMedia,
             theme: profile.theme || state.theme,
           });
           state.profile.id = profile.id;
