@@ -26,18 +26,43 @@ export function normalizeUsername(value) {
     .replace(/^@+/, '')
     .replace(/[^a-z0-9._-]/g, '')
     .slice(0, 30);
+
+  // Must contain at least one letter or number
+  if (!/[a-z0-9]/.test(clean)) {
+    return '';
+  }
+
   return clean;
 }
 
 /**
  * Debounce function to limit the rate at which a function can fire.
+ * Includes a flush method to execute the pending call immediately.
  */
 export function debounce(fn, delay) {
   let timer = null;
-  return (...args) => {
+  let lastArgs = null;
+
+  const debounced = (...args) => {
+    lastArgs = args;
     clearTimeout(timer);
-    timer = setTimeout(() => fn(...args), delay);
+    timer = setTimeout(() => {
+      fn(...args);
+      timer = null;
+      lastArgs = null;
+    }, delay);
   };
+
+  debounced.flush = () => {
+    if (timer) {
+      clearTimeout(timer);
+      fn(...lastArgs);
+      timer = null;
+      lastArgs = null;
+    }
+  };
+
+  return debounced;
 }
 
 /**

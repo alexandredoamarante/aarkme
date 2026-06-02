@@ -21,7 +21,7 @@
     <div class="ambient ambient-two" aria-hidden="true"></div>
     <div class="noise" aria-hidden="true"></div>
 
-    <div id="loadingOverlay" class="loading-overlay" hidden>
+    <div id="loadingOverlay" class="loading-overlay" aria-hidden="true" hidden>
       <div class="loader"></div>
     </div>
     <div id="toastContainer" class="toast-container"></div>
@@ -97,11 +97,11 @@
       </section>
     </main>
 
-    <div id="loginModal" class="modal-overlay" hidden>
+    <div id="loginModal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="loginTitle" hidden>
       <div class="glass-card modal-content">
         <div class="modal-header">
           <p class="eyebrow">sign in</p>
-          <h2 class="modal-title">Welcome back</h2>
+          <h2 class="modal-title" id="loginTitle">Welcome back</h2>
           <p class="modal-copy">Enter your email to receive a magic link. No password required.</p>
         </div>
         <form id="loginForm" class="login-form">

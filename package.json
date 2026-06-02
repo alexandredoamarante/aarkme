@@ -9,6 +9,11 @@
     "url": "git+https://github.com/alexandredoamarante/aarkme.git"
   },
   "license": "ISC",
+  "scripts": {
+    "start": "python3 -m http.server 8000",
+    "test": "npx playwright test",
+    "test:ui": "npx playwright test --ui"
+  },
   "devDependencies": {
     "@playwright/browser-chromium": "^1.60.0"
   },
