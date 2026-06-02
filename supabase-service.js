@@ -79,18 +79,8 @@ export class SupabaseService {
     }
   }
 
-  async signIn(email, password) {
-    if (!this.client) throw new Error('Supabase not configured');
-    const { data, error } = await this.client.auth.signInWithPassword({
-      email,
-      password,
-    });
-    if (error) throw error;
-    return data;
-  }
-
   async signInWithOtp(email) {
-    if (!this.client) throw new Error('Supabase not configured');
+    if (!this.client) throw new Error('Supabase not configured. Check your supabase-config.js file.');
     const { data, error } = await this.client.auth.signInWithOtp({
       email,
       options: {
@@ -125,6 +115,7 @@ export class SupabaseService {
       if (error) throw error;
     } catch (error) {
       console.error('deleteMediaItem failed:', error);
+      throw error;
     }
   }
 
@@ -136,19 +127,24 @@ export class SupabaseService {
     // Remove id from payload if present, we rely on owner_id for conflict resolution
     const { id, ...cleanData } = profileData;
 
-    const { data, error } = await this.client
-      .from('profiles')
-      .upsert({
-        is_public: true,
-        ...cleanData,
-        owner_id: user.id,
-        updated_at: new Date().toISOString(),
-      }, { onConflict: 'owner_id' })
-      .select()
-      .single();
+    try {
+      const { data, error } = await this.client
+        .from('profiles')
+        .upsert({
+          is_public: true,
+          ...cleanData,
+          owner_id: user.id,
+          updated_at: new Date().toISOString(),
+        }, { onConflict: 'owner_id' })
+        .select()
+        .single();
 
-    if (error) throw error;
-    return data;
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('saveProfile failed:', error);
+      throw error;
+    }
   }
 
   async saveMediaItem(profileId, itemData) {
@@ -159,33 +155,43 @@ export class SupabaseService {
     // Remove id from payload if present, we rely on composite key for conflict resolution
     const { id, ...cleanData } = itemData;
 
-    const { data, error } = await this.client
-      .from('media_items')
-      .upsert({
-        ...cleanData,
-        profile_id: profileId,
-        owner_id: user.id,
-        updated_at: new Date().toISOString(),
-      }, { onConflict: 'profile_id,kind,slot_index' })
-      .select()
-      .single();
+    try {
+      const { data, error } = await this.client
+        .from('media_items')
+        .upsert({
+          ...cleanData,
+          profile_id: profileId,
+          owner_id: user.id,
+          updated_at: new Date().toISOString(),
+        }, { onConflict: 'profile_id,kind,slot_index' })
+        .select()
+        .single();
 
-    if (error) throw error;
-    return data;
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('saveMediaItem failed:', error);
+      throw error;
+    }
   }
 
   async uploadImage(bucket, path, file) {
     if (!this.client) throw new Error('Supabase not configured');
-    const { data, error } = await this.client.storage
-      .from(bucket)
-      .upload(path, file, { upsert: true });
+    try {
+      const { data, error } = await this.client.storage
+        .from(bucket)
+        .upload(path, file, { upsert: true });
 
-    if (error) throw error;
+      if (error) throw error;
 
-    const { data: { publicUrl } } = this.client.storage
-      .from(bucket)
-      .getPublicUrl(data.path);
+      const { data: { publicUrl } } = this.client.storage
+        .from(bucket)
+        .getPublicUrl(data.path);
 
-    return publicUrl;
+      return publicUrl;
+    } catch (error) {
+      console.error('uploadImage failed:', error);
+      throw error;
+    }
   }
 }

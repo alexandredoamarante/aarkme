@@ -16,7 +16,7 @@ create table if not exists public.profiles (
   is_public boolean not null default true,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
-  constraint username_format check (username ~ '^[a-z0-9._-]{1,30}$')
+  constraint username_format check (username ~ '^[a-z0-9._-]{1,30}$' and username ~ '[a-z0-9]')
 );
 
 -- Media items table
@@ -91,8 +91,20 @@ using (
 
 create policy "owners manage media"
 on public.media_items for all
-using (auth.uid() = owner_id)
-with check (auth.uid() = owner_id);
+using (
+  exists (
+    select 1 from public.profiles p
+    where p.id = media_items.profile_id
+      and p.owner_id = auth.uid()
+  )
+)
+with check (
+  exists (
+    select 1 from public.profiles p
+    where p.id = media_items.profile_id
+      and p.owner_id = auth.uid()
+  )
+);
 
 -- Storage bucket for aarkme-media
 -- Note: Buckets are usually created via the Supabase Dashboard or API,

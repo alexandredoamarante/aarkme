@@ -235,8 +235,7 @@ function isFilled(item) {
     safeText(item.rating) ||
     safeText(item.tag) ||
     safeText(item.note) ||
-    safeText(item.cover) ||
-    Boolean(item.featured),
+    safeText(item.cover),
   );
 }
 
@@ -245,20 +244,23 @@ function sanitizeString(value, max = 7000) {
 }
 
 function normalizeRating(value) {
-  const text = String(value ?? '').trim().replace(',', '.');
+  let text = String(value ?? '').trim().replace(',', '.');
   if (!text) return '';
 
-  const match = text.match(/^(\d+(\.\d+)?)\/10$/);
-  if (match) {
-    const num = parseFloat(match[1]);
-    if (num >= 0 && num <= 10) return `${num}/10`;
-  }
-
+  // Handle case where user just typed a number without /10
   if (/^\d+(\.\d+)?$/.test(text)) {
     const num = parseFloat(text);
     if (num >= 0 && num <= 10) {
       return `${num}/10`;
     }
+    return null;
+  }
+
+  // Handle case where user typed X/10
+  const match = text.match(/^(\d+(\.\d+)?)\/10$/);
+  if (match) {
+    const num = parseFloat(match[1]);
+    if (num >= 0 && num <= 10) return `${num}/10`;
   }
 
   return null;
@@ -287,7 +289,6 @@ function makeSlots(items = []) {
   const cleaned = Array.from({ length: MAX_ITEMS }, () => blankItem());
 
   if (items.length > 0) {
-    console.log('[aarkme] makeSlots processing items:', items.slice(0, 3));
   }
 
   items.forEach((item, index) => {
@@ -653,12 +654,11 @@ function coverHtml(item, kind, compact = false) {
   `;
 }
 
-function metaLine(item, kind) {
-  const meta = categories[kind];
+function metaLine(item, kind, fallback = '') {
   const parts = [];
   if (safeText(item.creator)) parts.push(item.creator);
   if (safeText(item.year)) parts.push(item.year);
-  return parts.join(' · ') || meta.creator;
+  return parts.join(' · ') || fallback;
 }
 
 function renderMedia() {
@@ -687,7 +687,6 @@ function renderMedia() {
     .join('');
 
   if (!sections) {
-    console.log('[aarkme] Rendering empty shrine. Reason: No sections with filled media items were rendered.');
   }
 
   mediaMount.innerHTML = sections || `
@@ -708,9 +707,11 @@ function renderMediaSection(kind, meta, publicMode) {
   const items = state.media[kind] || makeSlots();
   const filled = items.filter(isFilled);
 
-  if (publicMode && filled.length === 0) {
-    console.log(`[aarkme] Skipping section ${kind} in public mode. Filled count: 0.`);
-    return '';
+  // If public view, hide if entirely empty OR if user specifically collapsed it
+  if (publicMode) {
+    if (filled.length === 0 || state.collapsedSections?.[kind]) {
+      return '';
+    }
   }
 
   let itemsToRender;
@@ -764,16 +765,18 @@ function renderMediaSection(kind, meta, publicMode) {
 
 function renderPublicCard(item, kind) {
   const meta = categories[kind];
-  const title = safeText(item.title, `Untitled ${meta.singular}`);
+  const title = safeText(item.title);
+  const mLine = metaLine(item, kind);
   const rating = safeText(item.rating);
   const tag = safeText(item.tag);
   const note = safeText(item.note);
+
   return `
     <article class="media-card media-public-card ${item.featured ? 'is-featured' : ''}">
       ${coverHtml(item, kind)}
       <div class="card-copy">
-        <h3 class="card-title">${escapeHtml(title)}</h3>
-        <p class="card-meta">${escapeHtml(metaLine(item, kind))}</p>
+        ${title ? `<h3 class="card-title">${escapeHtml(title)}</h3>` : ''}
+        ${mLine ? `<p class="card-meta">${escapeHtml(mLine)}</p>` : ''}
         ${(rating || tag) ? `
           <div class="rating-row">
             ${rating ? `<span class="rating-chip">${escapeHtml(rating)}</span>` : ''}
@@ -789,7 +792,7 @@ function renderPublicCard(item, kind) {
 function renderEditorCard(item, kind, index) {
   const meta = categories[kind];
   const title = safeText(item.title, `Empty ${meta.singular}`);
-  const metaText = isFilled(item) ? metaLine(item, kind) : `Slot ${index + 1} is ready`;
+  const metaText = isFilled(item) ? metaLine(item, kind, meta.creator) : `Slot ${index + 1} is ready`;
   const note = safeText(item.note, 'Add title, cover, rating, and a short note.');
   const filledClass = isFilled(item) ? 'is-filled' : 'is-empty';
 
@@ -818,9 +821,9 @@ function renderEditorCard(item, kind, index) {
           <button class="ghost-btn" type="button" data-action="remove-cover" data-kind="${escapeHtml(kind)}" data-index="${index}">remove cover</button>
           <button class="ghost-btn" type="button" data-action="clear-item" data-kind="${escapeHtml(kind)}" data-index="${index}">clear slot</button>
           <div class="reorder-tools">
-            <button class="tiny-btn ${item.featured ? 'active' : ''}" type="button" data-action="toggle-featured" data-kind="${escapeHtml(kind)}" data-index="${index}" aria-label="Toggle featured" aria-pressed="${item.featured}">★</button>
-            <button class="tiny-btn" type="button" data-action="move-up" data-kind="${escapeHtml(kind)}" data-index="${index}" ${index === 0 ? 'disabled' : ''} aria-label="Move up">↑</button>
-            <button class="tiny-btn" type="button" data-action="move-down" data-kind="${escapeHtml(kind)}" data-index="${index}" ${index === MAX_ITEMS - 1 ? 'disabled' : ''} aria-label="Move down">↓</button>
+            <button class="tiny-btn ${item.featured ? 'active' : ''}" type="button" data-action="toggle-featured" data-kind="${escapeHtml(kind)}" data-index="${index}" aria-label="Toggle featured" aria-pressed="${item.featured}"><span aria-hidden="true">★</span></button>
+            <button class="tiny-btn" type="button" data-action="move-up" data-kind="${escapeHtml(kind)}" data-index="${index}" ${index === 0 ? 'disabled' : ''} aria-label="Move up"><span aria-hidden="true">↑</span></button>
+            <button class="tiny-btn" type="button" data-action="move-down" data-kind="${escapeHtml(kind)}" data-index="${index}" ${index === MAX_ITEMS - 1 ? 'disabled' : ''} aria-label="Move down"><span aria-hidden="true">↓</span></button>
           </div>
         </div>
         <div class="field-grid two">
@@ -994,13 +997,12 @@ function importJson(file) {
 function copyProfileLink() {
   const username = normalizeUsername(state.profile.username);
 
-  if (!username || username === 'nickname' || username === 'aarkme.user') {
-    showToast('Choose a username before sharing your profile.');
+  if (!username || username === 'nickname' || username === 'aarkme.user' || state.profileNotFound) {
+    showToast('Choose a valid username before sharing your profile.');
     return;
   }
 
   const url = window.location.origin + "/?u=" + encodeURIComponent(username);
-  console.log('[aarkme] Generated share URL:', url);
   const shareData = {
     title: `${state.profile.name} — aarkme`,
     text: `Check out ${state.profile.name}'s media profile on aarkme.`,
@@ -1180,16 +1182,23 @@ async function handleAction(action, target) {
       if (!isOwner) return;
       const { kind, index } = target.dataset;
       const numericIndex = Number(index);
-      const isCurrentlyFeatured = state.media[kind][numericIndex].featured;
+      const item = state.media[kind][numericIndex];
+
+      if (!isFilled(item)) {
+        showToast('Only filled items can be featured.');
+        return;
+      }
+
+      const isCurrentlyFeatured = item.featured;
 
       Object.keys(state.media).forEach((k) => {
-        state.media[k].forEach((item) => {
-          item.featured = false;
+        state.media[k].forEach((it) => {
+          it.featured = false;
         });
       });
 
       if (!isCurrentlyFeatured) {
-        state.media[kind][numericIndex].featured = true;
+        item.featured = true;
       }
 
       persist({ render: true });
@@ -1207,7 +1216,6 @@ async function init() {
   const username = normalizeUsername(rawUsername);
 
   if (username) {
-    console.log('[aarkme] Resolved username:', username);
     state.mode = 'public';
     // Clear state for public loading to avoid showing demo profile
     state.profile.name = 'loading...';
@@ -1228,27 +1236,20 @@ async function init() {
         showLoading(true);
         const profile = await supabase.getProfile(username);
         if (profile) {
-          console.log('[aarkme] Fetched profile:', profile);
           profileId = profile.id;
           isOwner = currentUser && currentUser.id === profile.owner_id;
-          console.log('[aarkme] Is owner:', isOwner);
 
           const mediaItems = await supabase.getMediaItems(profile.id);
-          console.log('[aarkme] Fetched mediaItems count:', mediaItems.length);
 
           const kindsFound = [...new Set(mediaItems.map(i => i.kind))];
-          console.log('[aarkme] Media kinds found:', kindsFound.join(', '));
 
           mediaItems.forEach((item, idx) => {
-            console.log(`[aarkme] Media Item ${idx}: kind=${item.kind}, slot=${item.slot_index}, filled=${isFilled(item)}, cover=${!!item.cover}`);
           });
 
           if (mediaItems.length === 0) {
-            console.log('[aarkme] Why empty shrine: fetched media list is empty.');
           } else {
             const filledCount = mediaItems.filter(isFilled).length;
             if (filledCount === 0) {
-              console.log('[aarkme] Why empty shrine: all fetched rows are completely blank.');
             }
           }
 
@@ -1272,7 +1273,6 @@ async function init() {
           state.mode = isOwner ? state.mode : 'public';
           renderApp();
         } else {
-          console.log('[aarkme] Profile not found in Supabase:', username);
           state.profileNotFound = true;
           isOwner = false;
           renderApp();
@@ -1295,7 +1295,6 @@ async function init() {
           isOwner = true;
 
           const mediaItems = await supabase.getMediaItems(profile.id);
-          console.log('[aarkme] Owner profile loaded. Media items count:', mediaItems.length);
 
           // Granular merge: for each slot, prefer cloud item if it is filled.
           const mergedMedia = {};
@@ -1373,9 +1372,24 @@ if (loginForm) {
 
 document.addEventListener('click', (event) => {
   const actionTarget = event.target.closest('[data-action]');
-  if (!actionTarget) return;
-  event.preventDefault();
-  handleAction(actionTarget.dataset.action, actionTarget);
+  if (actionTarget) {
+    event.preventDefault();
+    handleAction(actionTarget.dataset.action, actionTarget);
+    return;
+  }
+
+  // Handle modal backdrop clicks
+  if (event.target.classList.contains('modal-overlay')) {
+    event.target.hidden = true;
+  }
+});
+
+document.addEventListener('keydown', (event) => {
+  if (event.key === 'Escape') {
+    if (loginModal && !loginModal.hidden) {
+      loginModal.hidden = true;
+    }
+  }
 });
 
 document.addEventListener('input', (event) => {
@@ -1503,12 +1517,19 @@ document.addEventListener('toggle', (event) => {
 }, true);
 
 window.addEventListener('storage', (event) => {
+  if (!isOwner) return; // Guests should not have their state updated by other tabs' localStorage
   if (event.key !== STORAGE_KEY || !event.newValue) return;
   try {
     state = normalizeState(JSON.parse(event.newValue));
     renderApp();
   } catch (error) {
     console.warn('Ignored invalid cross-tab state.', error);
+  }
+});
+
+window.addEventListener('beforeunload', () => {
+  if (isOwner && debouncedSave && typeof debouncedSave.flush === 'function') {
+    debouncedSave.flush();
   }
 });
 
