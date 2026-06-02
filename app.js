@@ -643,11 +643,11 @@ function coverHtml(item, kind, compact = false) {
   const ratio = meta.ratio;
   if (safeText(item.cover)) {
     const altTitle = safeText(item.title, `${meta.singular} cover`);
-    return `<div class="cover-wrap ${ratio}"><img src="${escapeHtml(item.cover)}" alt="${escapeHtml(altTitle)} cover" loading="lazy" /></div>`;
+    return `<div class="cover-wrap ${ratio} is-${kind}"><img src="${escapeHtml(item.cover)}" alt="${escapeHtml(altTitle)} cover" loading="lazy" /></div>`;
   }
   const mark = compact ? meta.singular : meta.label;
   return `
-    <div class="cover-wrap ${ratio}" aria-hidden="true">
+    <div class="cover-wrap ${ratio} is-${kind}" aria-hidden="true">
       <div class="cover-placeholder is-${kind}"><span class="cover-mark">${escapeHtml(mark)}</span></div>
     </div>
   `;
