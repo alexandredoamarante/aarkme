@@ -228,14 +228,23 @@ function safeText(value, fallback = '') {
 }
 
 function isFilled(item) {
+  if (!isObject(item)) return false;
   return Boolean(
     safeText(item.title) ||
     safeText(item.creator) ||
+    safeText(item.director) ||
+    safeText(item.artist) ||
+    safeText(item.author) ||
+    safeText(item.studio) ||
+    safeText(item.developer) ||
     safeText(item.year) ||
     safeText(item.rating) ||
     safeText(item.tag) ||
     safeText(item.note) ||
-    safeText(item.cover),
+    safeText(item.description) ||
+    safeText(item.cover) ||
+    safeText(item.image) ||
+    safeText(item.image_url)
   );
 }
 
@@ -268,6 +277,16 @@ function normalizeRating(value) {
 
 function sanitizeItem(item) {
   const source = isObject(item) ? item : {};
+
+  // Handle field aliases for note/description
+  const note = source.note || source.description || '';
+
+  // Handle field aliases for cover/image/image_url
+  const cover = source.cover || source.image || source.image_url || '';
+
+  // Handle field aliases for creator
+  const creator = source.creator || source.director || source.artist || source.author || source.studio || source.developer || '';
+
   const rawRating = sanitizeString(source.rating, 24);
   const normalized = normalizeRating(rawRating);
 
@@ -275,12 +294,12 @@ function sanitizeItem(item) {
     id: source.id || undefined, // Keep Supabase ID if present
     slot_index: (typeof source.slot_index === 'number') ? source.slot_index : undefined,
     title: sanitizeString(source.title, 160),
-    creator: sanitizeString(source.creator, 160),
+    creator: sanitizeString(creator, 160),
     year: sanitizeString(source.year, 24),
     rating: normalized !== null ? normalized : '',
     tag: sanitizeString(source.tag, 80),
-    note: sanitizeString(source.note, 420),
-    cover: sanitizeString(source.cover, 2500000),
+    note: sanitizeString(note, 420),
+    cover: sanitizeString(cover, 2500000),
     featured: Boolean(source.featured),
   };
 }
@@ -517,7 +536,9 @@ async function updateAuthUI() {
   try {
     const user = await supabase.getCurrentUser();
     if (user) {
-      authStatus.textContent = user.email;
+      const username = normalizeUsername(state.profile.username);
+      authStatus.textContent = username && username !== 'nickname' ? `@${username}` : user.email;
+      authStatus.title = user.email; // Show email on hover
       authStatus.hidden = false;
       signInBtn.hidden = true;
       signOutBtn.hidden = false;
@@ -548,7 +569,7 @@ function avatarHtml() {
   const avatar = safeText(state.profile.avatar);
   const alt = `${safeText(state.profile.name, 'Profile')} avatar`;
   if (avatar) {
-    return `<img src="${escapeHtml(avatar)}" alt="${escapeHtml(alt)}" loading="lazy" />`;
+    return `<img src="${escapeHtml(avatar)}" alt="${escapeHtml(alt)}" loading="lazy" decoding="async" onerror="this.style.display='none'; this.nextElementSibling.hidden=false;" /><div class="avatar-placeholder" aria-hidden="true" hidden>${escapeHtml(profileInitials())}</div>`;
   }
   return `<div class="avatar-placeholder" aria-hidden="true">${escapeHtml(profileInitials())}</div>`;
 }
@@ -642,14 +663,24 @@ function toHexColor(value, fallback) {
 function coverHtml(item, kind, compact = false) {
   const meta = categories[kind];
   const ratio = meta.ratio;
+  const mark = compact ? meta.singular : meta.label;
+  const placeholder = `
+    <div class="cover-placeholder is-${kind}"><span class="cover-mark">${escapeHtml(mark)}</span></div>
+  `;
+
   if (safeText(item.cover)) {
     const altTitle = safeText(item.title, `${meta.singular} cover`);
-    return `<div class="cover-wrap ${ratio} is-${kind}"><img src="${escapeHtml(item.cover)}" alt="${escapeHtml(altTitle)} cover" loading="lazy" /></div>`;
+    return `
+      <div class="cover-wrap ${ratio} is-${kind}">
+        <img src="${escapeHtml(item.cover)}" alt="${escapeHtml(altTitle)} cover" loading="lazy" decoding="async" onerror="this.style.display='none'; this.nextElementSibling.style.display='grid';" />
+        <div class="cover-placeholder is-${kind}" style="display: none;"><span class="cover-mark">${escapeHtml(mark)}</span></div>
+      </div>
+    `;
   }
-  const mark = compact ? meta.singular : meta.label;
+
   return `
     <div class="cover-wrap ${ratio} is-${kind}" aria-hidden="true">
-      <div class="cover-placeholder is-${kind}"><span class="cover-mark">${escapeHtml(mark)}</span></div>
+      ${placeholder}
     </div>
   `;
 }
@@ -915,6 +946,7 @@ async function handleImageUpload(file, callback, options = {}) {
     let dataUrl = await compressImage(file, compressionOpts);
 
     // If result is still somehow massive (unlikely with canvas), try one more pass
+    // 1.5MB in characters is roughly 1.1MB of actual data after base64
     if (dataUrl.length > 1.5 * 1024 * 1024) {
       dataUrl = await compressImage(file, { ...compressionOpts, quality: 0.6 });
     }
