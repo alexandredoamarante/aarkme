@@ -248,23 +248,25 @@ img {
   padding: 0 0.75rem;
   background: rgba(255, 255, 255, 0.03);
   color: var(--muted);
-  font-size: 0.65rem;
+  font-size: 0.62rem;
   font-family: var(--mono);
   letter-spacing: 0.05em;
   text-transform: uppercase;
   transition: all 0.2s ease;
+  opacity: 0.7;
 }
 
 .save-status.is-saved {
   color: var(--accent);
   background: color-mix(in srgb, var(--accent) 10%, transparent);
   border-color: color-mix(in srgb, var(--accent) 30%, var(--hairline));
+  opacity: 1;
 }
 
 .auth-status-chip {
   display: inline-flex;
   align-items: center;
-  padding: 0 var(--s3);
+  padding: 0 0.85rem;
   height: 2.1rem;
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid var(--hairline);
@@ -272,11 +274,18 @@ img {
   color: var(--muted);
   font-size: 0.72rem;
   font-family: var(--mono);
-  max-width: 140px;
+  max-width: 160px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   flex-shrink: 1;
+  transition: all 0.2s ease;
+}
+
+.auth-status-chip:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text);
+  border-color: var(--muted);
 }
 
 .auth-status-chip:empty {
@@ -834,8 +843,12 @@ textarea {
 .card-note {
   display: -webkit-box;
   overflow: hidden;
-  -webkit-line-clamp: 3;
+  -webkit-line-clamp: 10; /* Allow more space in public view */
   -webkit-box-orient: vertical;
+}
+
+.media-public-card .card-note {
+  -webkit-line-clamp: unset; /* No limit for public profile notes */
 }
 
 .rating-row {
