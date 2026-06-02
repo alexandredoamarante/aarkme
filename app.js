@@ -365,11 +365,16 @@ function normalizeState(raw) {
   };
 }
 
+let lastSyncedStateString = null;
+
 const debouncedSave = debounce(async () => {
   state.savedAt = new Date().toISOString();
 
-  // 1. Always save to LocalStorage
+  // 1. Always save to LocalStorage immediately
   const localOk = storage.save(state);
+  if (localOk) {
+    announceSaved(supabase ? 'saving...' : 'saved locally');
+  }
 
   let syncAttempted = false;
   let syncErrorMsg = null;
@@ -386,48 +391,78 @@ const debouncedSave = debounce(async () => {
         if (!username) {
           syncErrorMsg = 'nickname required';
         } else {
-          // Sync Profile
+          // Identify changes for differential sync
+          const currentStateString = JSON.stringify({
+            profile: state.profile,
+            media: state.media,
+            theme: state.theme
+          });
+
+          if (currentStateString === lastSyncedStateString) {
+            announceSaved('synced');
+            return;
+          }
+
+          const lastState = lastSyncedStateString ? JSON.parse(lastSyncedStateString) : null;
+
+          // Sync Profile if changed
           try {
-            const profileData = {
-              username,
-              name: state.profile.name,
-              bio: state.profile.bio,
-              avatar: state.profile.avatar,
-              theme: state.theme,
-            };
+            const profileChanged = !lastState || JSON.stringify(state.profile) !== JSON.stringify(lastState.profile) || JSON.stringify(state.theme) !== JSON.stringify(lastState.theme);
 
-            const savedProfile = await supabase.saveProfile(profileData);
-            if (savedProfile) {
-              profileId = savedProfile.id;
-              state.profile.id = savedProfile.id;
-              // Persist the acquired profileId back to localStorage
-              storage.save(state);
+            if (profileChanged) {
+              const profileData = {
+                username,
+                name: state.profile.name,
+                bio: state.profile.bio,
+                avatar: state.profile.avatar,
+                theme: state.theme,
+              };
 
-              // Sync Media Items
-              const syncPromises = [];
-              Object.entries(state.media).forEach(([kind, items]) => {
-                items.forEach((item, index) => {
+              const savedProfile = await supabase.saveProfile(profileData);
+              if (savedProfile) {
+                profileId = savedProfile.id;
+                state.profile.id = savedProfile.id;
+                storage.save(state);
+              } else {
+                throw new Error('profile sync failed');
+              }
+            }
+
+            // Sync Media Items (Differential)
+            const syncPromises = [];
+            Object.entries(state.media).forEach(([kind, items]) => {
+              items.forEach((item, index) => {
+                const lastItem = lastState?.media?.[kind]?.[index];
+                const itemChanged = !lastState || JSON.stringify(item) !== JSON.stringify(lastItem);
+
+                if (itemChanged) {
                   if (isFilled(item)) {
                     syncPromises.push(supabase.saveMediaItem(profileId, {
                       ...item,
                       kind,
                       slot_index: index,
                     }));
-                  } else {
+                  } else if (lastItem && isFilled(lastItem)) {
+                    // Only delete if it was previously filled
                     syncPromises.push(supabase.deleteMediaItem(profileId, kind, index));
                   }
-                });
+                }
               });
+            });
+
+            if (syncPromises.length > 0) {
               await Promise.all(syncPromises);
-            } else {
-              syncErrorMsg = 'profile sync failed';
             }
+
+            lastSyncedStateString = currentStateString;
           } catch (error) {
             console.error('Supabase sync failure details:', error);
             if (error.code === '23505' && (error.message?.includes('username') || error.detail?.includes('username'))) {
               syncErrorMsg = 'nickname taken';
             } else if (error.code === '42501') {
               syncErrorMsg = 'permission denied';
+            } else if (error.name === 'AbortError') {
+              syncErrorMsg = 'sync timeout';
             } else {
               syncErrorMsg = error.message || error.description || 'sync error';
             }
@@ -443,7 +478,9 @@ const debouncedSave = debounce(async () => {
   if (localOk) {
     if (syncErrorMsg) {
       announceSaved(`saved locally (${syncErrorMsg.toLowerCase()})`);
-      showToast(`Cloud sync error: ${syncErrorMsg}`);
+      if (syncErrorMsg !== 'nickname taken' && syncErrorMsg !== 'nickname required') {
+        showToast(`Cloud sync: ${syncErrorMsg}`);
+      }
     } else if (syncAttempted) {
       announceSaved('synced to cloud');
     } else {
@@ -479,8 +516,16 @@ function showToast(message) {
   }, 3000);
 }
 
+let loadingTimeout = null;
 function showLoading(show) {
   loadingOverlay.hidden = !show;
+  clearTimeout(loadingTimeout);
+  if (show) {
+    loadingTimeout = setTimeout(() => {
+      console.warn('Loading timeout reached, hiding overlay.');
+      loadingOverlay.hidden = true;
+    }, 15000);
+  }
 }
 
 function queueRender() {
@@ -569,7 +614,25 @@ function avatarHtml() {
   const avatar = safeText(state.profile.avatar);
   const alt = `${safeText(state.profile.name, 'Profile')} avatar`;
   if (avatar) {
-    return `<img src="${escapeHtml(avatar)}" alt="${escapeHtml(alt)}" loading="lazy" decoding="async" onerror="this.style.display='none'; this.nextElementSibling.hidden=false;" /><div class="avatar-placeholder" aria-hidden="true" hidden>${escapeHtml(profileInitials())}</div>`;
+    return `
+      <img src="${escapeHtml(avatar)}" alt="${escapeHtml(alt)}" loading="lazy" decoding="async"
+        onload="this.classList.add('is-loaded'); clearTimeout(this.timeoutId);"
+        onerror="this.style.display='none'; this.nextElementSibling.hidden=false; clearTimeout(this.timeoutId);"
+        ref="img"
+      />
+      <div class="avatar-placeholder" aria-hidden="true" hidden>${escapeHtml(profileInitials())}</div>
+      <script>
+        (function(){
+          var img = document.currentScript.previousElementSibling.previousElementSibling;
+          img.timeoutId = setTimeout(function() {
+            if (!img.complete || !img.classList.contains('is-loaded')) {
+              img.style.display = 'none';
+              img.nextElementSibling.hidden = false;
+            }
+          }, 10000);
+        })();
+      </script>
+    `;
   }
   return `<div class="avatar-placeholder" aria-hidden="true">${escapeHtml(profileInitials())}</div>`;
 }
@@ -672,8 +735,22 @@ function coverHtml(item, kind, compact = false) {
     const altTitle = safeText(item.title, `${meta.singular} cover`);
     return `
       <div class="cover-wrap ${ratio} is-${kind}">
-        <img src="${escapeHtml(item.cover)}" alt="${escapeHtml(altTitle)} cover" loading="lazy" decoding="async" onerror="this.style.display='none'; this.nextElementSibling.style.display='grid';" />
+        <img src="${escapeHtml(item.cover)}" alt="${escapeHtml(altTitle)} cover" loading="lazy" decoding="async"
+          onload="this.classList.add('is-loaded'); clearTimeout(this.timeoutId);"
+          onerror="this.style.display='none'; this.nextElementSibling.style.display='grid'; clearTimeout(this.timeoutId);"
+        />
         <div class="cover-placeholder is-${kind}" style="display: none;"><span class="cover-mark">${escapeHtml(mark)}</span></div>
+        <script>
+          (function(){
+            var img = document.currentScript.previousElementSibling.previousElementSibling;
+            img.timeoutId = setTimeout(function() {
+              if (!img.complete || !img.classList.contains('is-loaded')) {
+                img.style.display = 'none';
+                img.nextElementSibling.style.display = 'grid';
+              }
+            }, 10000);
+          })();
+        </script>
       </div>
     `;
   }

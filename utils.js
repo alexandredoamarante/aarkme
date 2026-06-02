@@ -72,9 +72,9 @@ export function debounce(fn, delay) {
  * @returns {Promise<string>} Data URL
  */
 export async function compressImage(file, {
-  maxWidth = 1200,
-  maxHeight = 1200,
-  quality = 0.8,
+  maxWidth = 800,
+  maxHeight = 800,
+  quality = 0.7,
   format = 'image/webp',
   cropToSquare = false,
 } = {}) {

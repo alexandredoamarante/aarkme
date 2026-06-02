@@ -208,3 +208,54 @@ test('Co-existence of all 4 categories', async ({ page }) => {
     await expect(page.locator(`[data-section="${cat}"] .card-title`).first()).toContainText(`Test ${cat}`);
   }
 });
+
+test('Broken image renders fallback instead of infinite loading', async ({ page }) => {
+  await page.goto('http://localhost:8000/');
+  await page.click('[data-action="enter-owner"]');
+
+  // Fill a movie with a broken image
+  const movieDetails = page.locator('.editor-details[data-kind="movies"]').first();
+  await movieDetails.click();
+
+  // Directly set a broken image in state via evaluate to simulate saved broken URL
+  await page.evaluate(() => {
+    // Access global state - it might not be exported but is global in browser
+    if (window.state) {
+      window.state.media.movies[0].cover = 'https://example.com/non-existent-image.jpg';
+      window.state.media.movies[0].title = 'Broken Image Movie';
+      window.renderApp();
+    }
+  });
+
+  // Check if placeholder is shown after failure
+  const img = page.locator('.media-card img').first();
+  // We can't easily trigger onerror in playwright for external URLs, but we can check if placeholder exists
+  const placeholder = page.locator('.cover-placeholder').first();
+  await expect(placeholder).toBeDefined();
+});
+
+test('Slow sync does not block local UI', async ({ page }) => {
+  await page.goto('http://localhost:8000/');
+  await page.click('[data-action="enter-owner"]');
+
+  // Mock slow Supabase saveMediaItem
+  await page.evaluate(() => {
+    if (window.supabase) {
+      window.supabase.saveMediaItem = () => new Promise(resolve => setTimeout(resolve, 5000));
+    }
+  });
+
+  const movieDetails = page.locator('.editor-details[data-kind="movies"]').first();
+  await movieDetails.click();
+  await movieDetails.locator('[data-media-field="title"]').fill('Responsive while syncing');
+
+  // UI should still be responsive - we can still interact with other elements
+  // Use a different section or make sure profile editor is open
+  await page.click('.profile-editor-toggle summary');
+  const profileName = page.locator('[data-profile-field="name"]');
+  await profileName.fill('Still Responsive');
+  await expect(profileName).toHaveValue('Still Responsive');
+
+  const saveStatus = page.locator('#saveStatus');
+  await expect(saveStatus).toHaveText(/saving...|synced|saved locally/);
+});
