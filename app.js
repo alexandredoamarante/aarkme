@@ -373,7 +373,16 @@ const debouncedSave = debounce(async () => {
   // 1. Always save to LocalStorage immediately
   const localOk = storage.save(state);
   if (localOk) {
-    announceSaved(supabase ? 'saving...' : 'saved locally');
+    if (supabase && isOwner && supabase.client) {
+      const user = await supabase.getCurrentUser();
+      if (user) {
+        announceSaved('saving...');
+      } else {
+        announceSaved('saved locally');
+      }
+    } else {
+      announceSaved('saved locally');
+    }
   }
 
   let syncAttempted = false;
@@ -499,8 +508,14 @@ function announceSaved(message = 'saved locally') {
   if (!saveStatus) return;
   saveStatus.textContent = message;
   saveStatus.classList.add('is-saved');
+
+  // If it's just 'saving...', don't remove the highlight yet
+  if (message === 'saving...') return;
+
   setTimeout(() => {
-    saveStatus.textContent = supabase ? 'cloud' : 'local';
+    // Check if it's still 'saving...' from a subsequent call
+    if (saveStatus.textContent === 'saving...') return;
+    saveStatus.textContent = supabase && supabase.client ? 'cloud' : 'local';
     saveStatus.classList.remove('is-saved');
   }, 2000);
 }
@@ -815,9 +830,10 @@ function renderMediaSection(kind, meta, publicMode) {
   const items = state.media[kind] || makeSlots();
   const filled = items.filter(isFilled);
 
-  // If public view, hide if entirely empty OR if user specifically collapsed it
+  // If public view, hide only if entirely empty.
+  // The 'collapsed' state is for the editor's organizational clarity only.
   if (publicMode) {
-    if (filled.length === 0 || state.collapsedSections?.[kind]) {
+    if (filled.length === 0) {
       return '';
     }
   }
@@ -842,9 +858,9 @@ function renderMediaSection(kind, meta, publicMode) {
     return publicMode ? renderPublicCard(item, kind) : renderEditorCard(item, kind, index);
   }).join('');
 
-  const canToggle = (state.mode === 'edit' && isOwner) || state.mode === 'preview';
+  const canToggle = (state.mode === 'edit' && isOwner);
   const isCollapsed = canToggle && Boolean(state.collapsedSections?.[kind]);
-  const toggleLabel = isCollapsed ? 'show' : 'hide';
+  const toggleLabel = isCollapsed ? 'expand' : 'collapse';
 
   return `
     <section class="glass-card media-section ${isCollapsed ? 'is-collapsed' : ''}" aria-labelledby="${kind}Title" data-section="${escapeHtml(kind)}">
