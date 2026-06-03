@@ -185,6 +185,7 @@ img {
   box-shadow: var(--shadow);
   backdrop-filter: blur(24px) saturate(160%);
   transition: all 0.3s ease;
+  overflow: hidden; /* Prevent child overflow from affecting layout */
 }
 
 .site-header:hover {
@@ -274,7 +275,7 @@ img {
   color: var(--muted);
   font-size: 0.72rem;
   font-family: var(--mono);
-  max-width: 160px;
+  max-width: 140px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1371,7 +1372,8 @@ body.mode-public .app-shell {
   .danger-btn,
   .file-control {
     min-height: 2.5rem;
-    padding-inline: var(--s3);
+    padding-inline: var(--s2);
+    font-size: 0.75rem;
   }
 
   .header-actions {
@@ -1681,7 +1683,7 @@ body.mode-public .app-shell {
 
 .tool-toggle[open] > .tool-summary .edit-pill::before,
 .profile-editor-toggle[open] > .tool-summary .edit-pill::before {
-  content: "hide";
+  content: "close";
 }
 
 .tool-panel-scroll {

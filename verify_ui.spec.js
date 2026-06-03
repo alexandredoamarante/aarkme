@@ -94,21 +94,33 @@ test('Verify public profile thumbnails', async ({ page }) => {
   const covers = page.locator('.media-public-card .cover-wrap');
 });
 
-test('Verify category visibility logic', async ({ page }) => {
+test('Verify category visibility logic: collapsed sections stay visible in public view if filled', async ({ page }) => {
   await page.goto('http://localhost:8000/');
 
   // Enter owner mode first to see the toggle button
   await page.click('[data-action="enter-owner"]');
 
-  // Collapse movies section
-  await page.click('[data-action="toggle-section"][data-kind="movies"]');
+  // Ensure movies section has filled content (demo should have it)
+  const moviesShelf = page.locator('[data-section="movies"]');
+  await expect(moviesShelf.locator('.media-card')).not.toHaveCount(0);
+
+  // Collapse movies section in editor
+  const toggleBtn = page.locator('[data-action="toggle-section"][data-kind="movies"]');
+  await expect(toggleBtn).toHaveText('collapse');
+  await toggleBtn.click();
+  await expect(toggleBtn).toHaveText('expand');
+
+  // Grid should be hidden in editor
+  const moviesGrid = page.locator('#moviesGrid');
+  await expect(moviesGrid).not.toBeVisible();
 
   // Go to preview mode
   await page.click('[data-action="preview-public"]');
 
-  // Check if movies shelf is hidden
-  const moviesShelf = page.locator('[data-section="movies"]');
-  await expect(moviesShelf).not.toBeVisible();
+  // Check if movies shelf is STILL VISIBLE in public/preview mode because it has filled media
+  await expect(moviesShelf).toBeVisible();
+  const publicCards = moviesShelf.locator('.media-public-card');
+  await expect(publicCards).not.toHaveCount(0);
 });
 
 test('Rating normalization and validation', async ({ page }) => {
