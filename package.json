@@ -14,11 +14,11 @@
     "test": "npx playwright test",
     "test:ui": "npx playwright test --ui"
   },
-  "devDependencies": {
-    "@playwright/browser-chromium": "^1.60.0"
-  },
   "dependencies": {
-    "@playwright/test": "^1.60.0",
-    "@supabase/supabase-js": "^2.106.2"
+    "@supabase/supabase-js": "^2.107.0"
+  },
+  "devDependencies": {
+    "@playwright/browser-chromium": "^1.60.0",
+    "@playwright/test": "^1.60.0"
   }
 }
