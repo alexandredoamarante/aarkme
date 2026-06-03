@@ -218,6 +218,7 @@ const toastContainer = document.getElementById('toastContainer');
 const loginModal = document.getElementById('loginModal');
 const loginForm = document.getElementById('loginForm');
 const loginEmail = document.getElementById('loginEmail');
+const welcomeScreen = document.getElementById('welcomeScreen');
 
 function isObject(value) {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
@@ -1208,6 +1209,7 @@ async function handleAction(action, target) {
         loginModal.hidden = false;
         if (loginEmail) loginEmail.focus();
       }
+      if (welcomeScreen) welcomeScreen.hidden = true;
       break;
     }
     case 'close-login': {
@@ -1297,6 +1299,24 @@ async function handleAction(action, target) {
     case 'share-profile':
       copyProfileLink();
       break;
+    case 'start-creating': {
+      localStorage.setItem('aarkme_welcome_seen', 'true');
+      if (welcomeScreen) welcomeScreen.hidden = true;
+      setMode('edit');
+      break;
+    }
+    case 'show-welcome': {
+      if (welcomeScreen) welcomeScreen.hidden = false;
+      break;
+    }
+    case 'explore-demo': {
+      if (welcomeScreen) welcomeScreen.hidden = true;
+      // We don't set the flag here because they might want to see the welcome screen again next time
+      // unless they explicitly "Start creating"
+      state = defaultState();
+      setMode('public');
+      break;
+    }
     case 'move-up':
       moveItem(target.dataset.kind, Number(target.dataset.index), 'up');
       break;
@@ -1348,6 +1368,17 @@ async function init() {
     state.profile.bio = '';
     state.profile.avatar = '';
     state.media = { movies: makeSlots(), albums: makeSlots(), books: makeSlots(), games: makeSlots() };
+
+    // Explicitly hide welcome screen for public visitors
+    if (welcomeScreen) welcomeScreen.hidden = true;
+  } else {
+    // Check if welcome screen should be shown
+    const welcomeSeen = localStorage.getItem('aarkme_welcome_seen') === 'true';
+    if (!welcomeSeen && welcomeScreen) {
+      welcomeScreen.hidden = false;
+    } else if (welcomeScreen) {
+      welcomeScreen.hidden = true;
+    }
   }
 
   renderApp();
@@ -1355,6 +1386,11 @@ async function init() {
   // 2. Progressive Enhancement (Supabase)
   if (supabase && supabase.client) {
     const currentUser = await supabase.getCurrentUser();
+
+    // If logged in, bypass welcome screen regardless of local flag
+    if (currentUser && welcomeScreen) {
+      welcomeScreen.hidden = true;
+    }
 
     if (username) {
       try {

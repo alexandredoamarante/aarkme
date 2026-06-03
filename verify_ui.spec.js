@@ -3,6 +3,8 @@ import { test, expect } from '@playwright/test';
 test.describe('Header Layout and Responsiveness', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('http://localhost:8000/');
+    await page.evaluate(() => localStorage.setItem('aarkme_welcome_seen', 'true'));
+    await page.reload();
   });
 
   test('Header should be sticky and have glassmorphism effect', async ({ page }) => {
@@ -96,6 +98,8 @@ test('Verify public profile thumbnails', async ({ page }) => {
 
 test('Verify category visibility logic: collapsed sections stay visible in public view if filled', async ({ page }) => {
   await page.goto('http://localhost:8000/');
+  await page.evaluate(() => localStorage.setItem('aarkme_welcome_seen', 'true'));
+  await page.reload();
 
   // Enter owner mode first to see the toggle button
   await page.click('[data-action="enter-owner"]');
@@ -125,6 +129,8 @@ test('Verify category visibility logic: collapsed sections stay visible in publi
 
 test('Rating normalization and validation', async ({ page }) => {
   await page.goto('http://localhost:8000/');
+  await page.evaluate(() => localStorage.setItem('aarkme_welcome_seen', 'true'));
+  await page.reload();
   await page.click('[data-action="enter-owner"]');
 
   // Expand first movie
@@ -147,6 +153,8 @@ test('Rating normalization and validation', async ({ page }) => {
 
 test('Featured item logic', async ({ page }) => {
   await page.goto('http://localhost:8000/');
+  await page.evaluate(() => localStorage.setItem('aarkme_welcome_seen', 'true'));
+  await page.reload();
   await page.click('[data-action="enter-owner"]');
 
   // Try to feature an empty item (last one)
@@ -163,6 +171,8 @@ test('Featured item logic', async ({ page }) => {
 
 test('Public preview renders all filled media information', async ({ page }) => {
   await page.goto('http://localhost:8000/');
+  await page.evaluate(() => localStorage.setItem('aarkme_welcome_seen', 'true'));
+  await page.reload();
   await page.click('[data-action="enter-owner"]');
 
   // Fill a movie with all details
@@ -191,6 +201,8 @@ test('Public preview renders all filled media information', async ({ page }) => 
 
 test('Co-existence of all 4 categories', async ({ page }) => {
   await page.goto('http://localhost:8000/');
+  await page.evaluate(() => localStorage.setItem('aarkme_welcome_seen', 'true'));
+  await page.reload();
   await page.click('[data-action="enter-owner"]');
 
   // Clear existing items by resetting demo but we want to start fresh
@@ -223,6 +235,8 @@ test('Co-existence of all 4 categories', async ({ page }) => {
 
 test('Broken image renders fallback instead of infinite loading', async ({ page }) => {
   await page.goto('http://localhost:8000/');
+  await page.evaluate(() => localStorage.setItem('aarkme_welcome_seen', 'true'));
+  await page.reload();
   await page.click('[data-action="enter-owner"]');
 
   // Fill a movie with a broken image
@@ -248,6 +262,8 @@ test('Broken image renders fallback instead of infinite loading', async ({ page 
 
 test('Slow sync does not block local UI', async ({ page }) => {
   await page.goto('http://localhost:8000/');
+  await page.evaluate(() => localStorage.setItem('aarkme_welcome_seen', 'true'));
+  await page.reload();
   await page.click('[data-action="enter-owner"]');
 
   // Mock slow Supabase saveMediaItem

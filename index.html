@@ -15,6 +15,39 @@
     <script src="app.js" type="module"></script>
   </head>
   <body>
+    <section id="welcomeScreen" class="welcome-screen" hidden>
+      <div class="welcome-content glass-card">
+        <div class="welcome-header">
+          <img src="assets/logo-aarkme.png" alt="aarkme" class="welcome-logo" />
+          <h1 class="welcome-title">Your taste, curated.</h1>
+          <p class="welcome-subtitle">Create a personal page for the movies, albums, books, and games that define you.</p>
+        </div>
+
+        <div class="welcome-body">
+          <p class="welcome-concept">
+            aarkme is an unsocial media profile: no feed, no followers, no algorithm — just a visual signal of your references.
+          </p>
+
+          <ul class="feature-list">
+            <li>Curate Movies, Albums, Books, and Games</li>
+            <li>Customize your profile colors</li>
+            <li>Add covers, notes, ratings, and highlights</li>
+            <li>Preview your public page</li>
+            <li>Share your profile with a link</li>
+            <li>Sign in with Magic Link to sync your page</li>
+          </ul>
+        </div>
+
+        <div class="welcome-footer">
+          <div class="welcome-actions">
+            <button class="solid-btn" type="button" data-action="start-creating">Start creating</button>
+            <button class="ghost-btn" type="button" data-action="sign-in">Sign in</button>
+          </div>
+          <button class="welcome-demo-link" type="button" data-action="explore-demo">Explore demo</button>
+        </div>
+      </div>
+    </section>
+
     <a class="skip-link" href="#main">Skip to content</a>
 
     <div class="ambient ambient-one" aria-hidden="true"></div>
@@ -85,6 +118,7 @@
               <div class="backup-actions">
                 <button class="ghost-btn" type="button" data-action="export-json">export</button>
                 <button class="ghost-btn" type="button" data-action="import-json">import</button>
+                <button class="ghost-btn" type="button" data-action="show-welcome">about aarkme</button>
                 <button class="danger-btn" type="button" data-action="reset-demo">reset demo</button>
               </div>
             </div>
