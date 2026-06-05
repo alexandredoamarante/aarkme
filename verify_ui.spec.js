@@ -10,6 +10,7 @@ test.describe('Header Layout and Responsiveness', () => {
   test('Header should be sticky and have glassmorphism effect', async ({ page }) => {
     const header = page.locator('.site-header');
     await expect(header).toHaveCSS('position', 'sticky');
+    await expect(header).toHaveCSS('top', '0px');
     await expect(header).toHaveCSS('backdrop-filter', /blur\(24px\)/);
   });
 
@@ -38,6 +39,7 @@ test.describe('Header Layout and Responsiveness', () => {
     const header = page.locator('.site-header');
     await expect(header).toHaveCSS('flex-direction', 'column');
     await expect(header).toHaveCSS('position', 'sticky');
+    await expect(header).toHaveCSS('top', '0px');
 
     // Check if actions wrap or stack
     const actions = page.locator('.header-actions');
@@ -119,7 +121,7 @@ test('Verify category visibility logic: collapsed sections stay visible in publi
   await expect(moviesGrid).not.toBeVisible();
 
   // Go to preview mode
-  await page.click('[data-action="preview-public"]');
+  await page.click('[data-action="view-public"]');
 
   // Check if movies shelf is STILL VISIBLE in public/preview mode because it has filled media
   await expect(moviesShelf).toBeVisible();
@@ -188,7 +190,7 @@ test('Public preview renders all filled media information', async ({ page }) => 
   await movieDetails.locator('[data-action="toggle-featured"]').click();
 
   // Preview
-  await page.click('[data-action="preview-public"]');
+  await page.click('[data-action="view-public"]');
 
   const card = page.locator('.media-public-card').first();
   await expect(card.locator('.card-title')).toHaveText('Interstellar');
@@ -225,7 +227,7 @@ test('Co-existence of all 4 categories', async ({ page }) => {
     await detail.click(); // close it
   }
 
-  await page.click('[data-action="preview-public"]');
+  await page.click('[data-action="view-public"]');
 
   for (const cat of categories) {
     await expect(page.locator(`[data-section="${cat}"]`)).toBeVisible();
@@ -285,5 +287,5 @@ test('Slow sync does not block local UI', async ({ page }) => {
   await expect(profileName).toHaveValue('Still Responsive');
 
   const saveStatus = page.locator('#saveStatus');
-  await expect(saveStatus).toHaveText(/saving...|synced|saved locally/);
+  await expect(saveStatus).toHaveText(/saving...|synced|saved/);
 });
