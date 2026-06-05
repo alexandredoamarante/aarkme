@@ -20,6 +20,8 @@
   --glass-strong: color-mix(in srgb, var(--panel) 84%, transparent);
   --field: color-mix(in srgb, var(--input) 80%, transparent);
   --max-page: 1120px;
+  --header-h: 4.5rem;
+  --header-h-mobile: 10rem;
 
   /* Cover Dimensions - Editor */
   --album-w-editor: 60px;
@@ -57,6 +59,13 @@ html {
   background: var(--bg);
   color: var(--text);
   scroll-behavior: smooth;
+  scroll-padding-top: calc(var(--header-h) + 1rem);
+}
+
+@media (max-width: 760px) {
+  html {
+    scroll-padding-top: calc(var(--header-h-mobile) + 1rem);
+  }
 }
 
 body {
@@ -174,6 +183,7 @@ img {
   left: 0;
   right: 0;
   z-index: 2100;
+  height: var(--header-h);
   display: grid;
   grid-template-columns: 1fr auto 1fr;
   align-items: center;
@@ -364,7 +374,7 @@ summary:focus-visible {
   grid-template-columns: minmax(250px, 300px) minmax(0, 1fr);
   gap: 1.5rem;
   width: min(calc(100% - 1.5rem), var(--max-page));
-  margin: 7.5rem auto 3rem;
+  margin: calc(var(--header-h) + 1.5rem) auto 3rem;
   align-items: start;
 }
 
@@ -1190,16 +1200,40 @@ body.mode-preview .preview-only {
 }
 
 body.mode-preview .save-status,
-body.mode-public .save-status {
-  opacity: 0;
-  width: 0;
-  min-width: 0;
-  padding: 0;
-  overflow: hidden;
+body.mode-public .save-status,
+body.mode-welcome .save-status {
+  opacity: 0 !important;
+  width: 0 !important;
+  min-width: 0 !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+  border: 0 !important;
 }
 
-body:not(.is-owner) .owner-only {
+body:not(.is-owner) .owner-only,
+body.mode-welcome .owner-only {
   display: none !important;
+}
+
+body.mode-preview .edit-only,
+body.mode-welcome .edit-only {
+  display: none !important;
+}
+
+body.mode-welcome .header-actions [data-action="share-profile"] {
+  display: none !important;
+}
+
+body.mode-welcome .header-actions #authStatus {
+  display: none !important;
+}
+
+body.mode-welcome .header-actions #signOutBtn {
+  display: none !important;
+}
+
+body.mode-welcome .header-actions #signInBtn {
+  display: inline-flex !important;
 }
 
 body.mode-edit .media-grid {
@@ -1282,6 +1316,7 @@ body.mode-public .app-shell {
     align-items: center;
     gap: 0.85rem;
     padding: var(--s4);
+    height: var(--header-h-mobile);
   }
 
   .header-spacer {
@@ -1302,11 +1337,12 @@ body.mode-public .app-shell {
   .auth-status-chip {
     max-width: 160px;
     font-size: 0.68rem;
+    height: 2.1rem;
   }
 
   .app-shell {
     width: min(calc(100% - 1rem), var(--max-page));
-    margin-top: 13rem;
+    margin-top: calc(var(--header-h-mobile) + 1.5rem);
     gap: 1rem;
   }
 
@@ -1386,8 +1422,8 @@ body.mode-public .app-shell {
   .header-actions .ghost-btn,
   .header-actions .solid-btn {
     flex: 1 1 auto;
-    height: 2.4rem;
-    min-height: 2.4rem;
+    height: 2.1rem;
+    min-height: 2.1rem;
     font-size: 0.7rem;
   }
 
@@ -1403,6 +1439,7 @@ body.mode-public .app-shell {
     width: 100%;
     justify-content: center;
     order: 10;
+    height: 2.1rem;
   }
 
   .profile-top {
@@ -1793,7 +1830,7 @@ body.mode-public .app-shell {
   justify-content: center;
   background: var(--bg);
   overflow-y: auto;
-  padding: 6rem var(--s4) var(--s8);
+  padding: calc(var(--header-h) + 2rem) var(--s4) var(--s8);
 }
 
 .welcome-screen[hidden] {
@@ -1802,9 +1839,9 @@ body.mode-public .app-shell {
 
 .welcome-content {
   width: min(100%, 640px);
-  padding: clamp(var(--s10), 12vw, var(--s12));
+  padding: clamp(var(--s10), 10vw, var(--s12));
   display: grid;
-  gap: var(--s8);
+  gap: var(--s10);
   animation: modal-up 0.6s cubic-bezier(0.16, 1, 0.3, 1);
   text-align: center;
 }
@@ -1823,10 +1860,10 @@ body.mode-public .app-shell {
 
 .welcome-title {
   margin: 0;
-  font-size: clamp(2.5rem, 10vw, 4rem);
+  font-size: clamp(2.5rem, 8vw, 4rem);
   font-weight: 800;
   letter-spacing: -0.05em;
-  line-height: 1;
+  line-height: 0.95;
 }
 
 .welcome-subtitle {
@@ -1850,6 +1887,7 @@ body.mode-public .app-shell {
   color: var(--text);
   border-left: 2px solid var(--accent);
   padding-left: var(--s4);
+  font-weight: 500;
 }
 
 .feature-list {
@@ -1865,7 +1903,8 @@ body.mode-public .app-shell {
   position: relative;
   padding-left: 1.5rem;
   color: var(--muted);
-  font-size: 0.9rem;
+  font-size: 0.85rem;
+  letter-spacing: 0.01em;
 }
 
 .feature-list li::before {
@@ -1892,9 +1931,10 @@ body.mode-public .app-shell {
 
 .welcome-actions .solid-btn,
 .welcome-actions .ghost-btn {
-  min-width: 160px;
+  min-width: 180px;
   height: 3.5rem;
   font-size: 1rem;
+  border-radius: 999px;
 }
 
 .welcome-demo-link {
@@ -1916,7 +1956,7 @@ body.mode-public .app-shell {
 
 @media (max-width: 480px) {
   .welcome-screen {
-    padding: var(--s4);
+    padding: calc(var(--header-h-mobile) + 2rem) var(--s4) var(--s8);
     align-items: flex-start;
   }
 
