@@ -78,7 +78,7 @@ test('Final Polish Verification', async ({ page }) => {
   // 25-26. Share check
   await page.locator('[data-action="share-profile"]').click();
   // We can't easily check clipboard in playwright without permissions but we check if announceSaved is called
-  await expect(page.locator('#saveStatus')).toHaveText(/copied/);
+  await expect(page.locator('#saveStatus')).toHaveText(/Copied/);
 
   // 27-29. Public profile URL
   await page.goto('http://localhost:8000/?u=nickname');

@@ -377,12 +377,12 @@ const debouncedSave = debounce(async () => {
     if (supabase && isOwner && supabase.client) {
       const user = await supabase.getCurrentUser();
       if (user) {
-        announceSaved('saving...');
+        announceSaved('Saving...');
       } else {
-        announceSaved('saved');
+        announceSaved('Saved');
       }
     } else {
-      announceSaved('saved');
+      announceSaved('Saved');
     }
   }
 
@@ -487,14 +487,14 @@ const debouncedSave = debounce(async () => {
 
   if (localOk) {
     if (syncErrorMsg) {
-      announceSaved(`saved (${syncErrorMsg.toLowerCase()})`);
+      announceSaved(`Saved (${syncErrorMsg.toLowerCase()})`);
       if (syncErrorMsg !== 'nickname taken' && syncErrorMsg !== 'nickname required') {
         showToast(`Cloud sync: ${syncErrorMsg}`);
       }
     } else if (syncAttempted) {
-      announceSaved('synced');
+      announceSaved('Synced');
     } else {
-      announceSaved('saved');
+      announceSaved('Saved');
     }
   }
 }, 1000);
@@ -505,18 +505,18 @@ function persist({ render = false } = {}) {
   if (render) queueRender();
 }
 
-function announceSaved(message = 'saved') {
+function announceSaved(message = 'Saved') {
   if (!saveStatus) return;
   saveStatus.textContent = message;
   saveStatus.classList.add('is-saved');
 
-  // If it's just 'saving...', don't remove the highlight yet
-  if (message === 'saving...') return;
+  // If it's just 'Saving...', don't remove the highlight yet
+  if (message === 'Saving...') return;
 
   setTimeout(() => {
-    // Check if it's still 'saving...' from a subsequent call
-    if (saveStatus.textContent === 'saving...') return;
-    saveStatus.textContent = supabase && supabase.client ? 'cloud' : 'local';
+    // Check if it's still 'Saving...' from a subsequent call
+    if (saveStatus.textContent === 'Saving...') return;
+    saveStatus.textContent = supabase && supabase.client ? 'Synced' : 'Saved';
     saveStatus.classList.remove('is-saved');
   }, 2000);
 }
@@ -570,8 +570,16 @@ function setMode(mode) {
 function renderApp() {
   state = normalizeState(state);
   applyTheme();
-  document.body.classList.remove('mode-edit', 'mode-public', 'mode-preview', 'is-owner');
-  document.body.classList.add(`mode-${state.mode}`);
+
+  const isWelcome = welcomeScreen && !welcomeScreen.hidden;
+  document.body.classList.remove('mode-edit', 'mode-public', 'mode-preview', 'mode-welcome', 'is-owner');
+
+  if (isWelcome) {
+    document.body.classList.add('mode-welcome');
+  } else {
+    document.body.classList.add(`mode-${state.mode}`);
+  }
+
   if (isOwner) document.body.classList.add('is-owner');
 
   const app = document.getElementById('app');
@@ -598,7 +606,8 @@ async function updateAuthUI() {
     const user = await supabase.getCurrentUser();
     if (user) {
       const username = normalizeUsername(state.profile.username);
-      authStatus.textContent = username && username !== 'nickname' ? `@${username}` : user.email;
+      let display = (username && username !== 'nickname' && username !== 'aarkme.user') ? `@${username}` : user.email;
+      authStatus.textContent = display;
       authStatus.title = user.email; // Show email on hover
       authStatus.hidden = false;
       signInBtn.hidden = true;
@@ -1137,7 +1146,7 @@ function copyProfileLink() {
 
   if (navigator.share && navigator.canShare && navigator.canShare(shareData)) {
     navigator.share(shareData)
-      .then(() => announceSaved('public profile link copied'))
+        .then(() => announceSaved('Link Copied'))
       .catch(() => copyToClipboard(url));
   } else {
     copyToClipboard(url);
@@ -1146,7 +1155,7 @@ function copyProfileLink() {
 
 function copyToClipboard(text) {
   navigator.clipboard.writeText(text)
-    .then(() => announceSaved('public profile link copied'))
+    .then(() => announceSaved('Link Copied'))
     .catch(() => {
       const textArea = document.createElement('textarea');
       textArea.value = text;
@@ -1154,7 +1163,7 @@ function copyToClipboard(text) {
       textArea.select();
       try {
         document.execCommand('copy');
-        announceSaved('public profile link copied');
+        announceSaved('Link Copied');
       } catch (err) {
         showToast('Copy failed.');
       }
@@ -1209,7 +1218,6 @@ async function handleAction(action, target) {
         loginModal.hidden = false;
         if (loginEmail) loginEmail.focus();
       }
-      if (welcomeScreen) welcomeScreen.hidden = true;
       break;
     }
     case 'close-login': {
@@ -1229,12 +1237,6 @@ async function handleAction(action, target) {
     }
     case 'enter-owner':
       enterOwnerMode();
-      break;
-    case 'preview-public':
-      setMode('preview');
-      break;
-    case 'return-editor':
-      setMode('edit');
       break;
     case 'view-public':
       setMode('preview');
@@ -1307,14 +1309,7 @@ async function handleAction(action, target) {
     }
     case 'show-welcome': {
       if (welcomeScreen) welcomeScreen.hidden = false;
-      break;
-    }
-    case 'explore-demo': {
-      if (welcomeScreen) welcomeScreen.hidden = true;
-      // We don't set the flag here because they might want to see the welcome screen again next time
-      // unless they explicitly "Start creating"
-      state = defaultState();
-      setMode('public');
+      renderApp();
       break;
     }
     case 'move-up':

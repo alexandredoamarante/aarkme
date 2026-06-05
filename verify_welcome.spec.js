@@ -44,16 +44,6 @@ test.describe('Welcome Screen', () => {
     await expect(page.locator('#loginModal')).toBeVisible();
   });
 
-  test('Explore demo enters public mode with demo data', async ({ page }) => {
-    const demoBtn = page.locator('[data-action="explore-demo"]');
-    await demoBtn.click();
-
-    await expect(page.locator('#welcomeScreen')).toBeHidden();
-    await expect(document => document.body.classList.contains('mode-public')).toBeTruthy;
-
-    // Check for demo data
-    await expect(page.locator('.card-title').first()).toContainText('Afterimage Motel');
-  });
 
   test('Responsiveness at 320px', async ({ page }) => {
     await page.setViewportSize({ width: 320, height: 568 });

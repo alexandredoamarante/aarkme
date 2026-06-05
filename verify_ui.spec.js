@@ -287,5 +287,5 @@ test('Slow sync does not block local UI', async ({ page }) => {
   await expect(profileName).toHaveValue('Still Responsive');
 
   const saveStatus = page.locator('#saveStatus');
-  await expect(saveStatus).toHaveText(/saving...|synced|saved/);
+  await expect(saveStatus).toHaveText(/Saving...|Synced|Saved/);
 });
