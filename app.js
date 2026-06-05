@@ -379,10 +379,10 @@ const debouncedSave = debounce(async () => {
       if (user) {
         announceSaved('saving...');
       } else {
-        announceSaved('saved locally');
+        announceSaved('saved');
       }
     } else {
-      announceSaved('saved locally');
+      announceSaved('saved');
     }
   }
 
@@ -487,14 +487,14 @@ const debouncedSave = debounce(async () => {
 
   if (localOk) {
     if (syncErrorMsg) {
-      announceSaved(`saved locally (${syncErrorMsg.toLowerCase()})`);
+      announceSaved(`saved (${syncErrorMsg.toLowerCase()})`);
       if (syncErrorMsg !== 'nickname taken' && syncErrorMsg !== 'nickname required') {
         showToast(`Cloud sync: ${syncErrorMsg}`);
       }
     } else if (syncAttempted) {
-      announceSaved('synced to cloud');
+      announceSaved('synced');
     } else {
-      announceSaved('saved locally');
+      announceSaved('saved');
     }
   }
 }, 1000);
@@ -505,7 +505,7 @@ function persist({ render = false } = {}) {
   if (render) queueRender();
 }
 
-function announceSaved(message = 'saved locally') {
+function announceSaved(message = 'saved') {
   if (!saveStatus) return;
   saveStatus.textContent = message;
   saveStatus.classList.add('is-saved');
@@ -1237,7 +1237,7 @@ async function handleAction(action, target) {
       setMode('edit');
       break;
     case 'view-public':
-      setMode('public');
+      setMode('preview');
       break;
     case 'export-json':
       exportJson();
