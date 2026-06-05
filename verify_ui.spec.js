@@ -7,9 +7,9 @@ test.describe('Header Layout and Responsiveness', () => {
     await page.reload();
   });
 
-  test('Header should be sticky and have glassmorphism effect', async ({ page }) => {
+  test('Header should be fixed and have glassmorphism effect', async ({ page }) => {
     const header = page.locator('.site-header');
-    await expect(header).toHaveCSS('position', 'sticky');
+    await expect(header).toHaveCSS('position', 'fixed');
     await expect(header).toHaveCSS('top', '0px');
     await expect(header).toHaveCSS('backdrop-filter', /blur\(24px\)/);
   });
@@ -38,7 +38,7 @@ test.describe('Header Layout and Responsiveness', () => {
     await page.setViewportSize({ width: 360, height: 800 });
     const header = page.locator('.site-header');
     await expect(header).toHaveCSS('flex-direction', 'column');
-    await expect(header).toHaveCSS('position', 'sticky');
+    await expect(header).toHaveCSS('position', 'fixed');
     await expect(header).toHaveCSS('top', '0px');
 
     // Check if actions wrap or stack
