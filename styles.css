@@ -62,15 +62,10 @@ html {
   scroll-padding-top: calc(var(--header-h) + 1rem);
 }
 
-@media (max-width: 760px) {
-  html {
-    scroll-padding-top: calc(var(--header-h-mobile) + 1rem);
-  }
-}
-
 body {
   min-height: 100vh;
   margin: 0;
+  padding-top: var(--header-h);
   overflow-x: hidden;
   font-family: var(--font);
   background:
@@ -180,8 +175,8 @@ img {
 .site-header {
   position: fixed;
   top: 0;
-  left: 0;
-  right: 0;
+  left: 50%;
+  transform: translateX(-50%);
   z-index: 2100;
   height: var(--header-h);
   display: grid;
@@ -189,7 +184,7 @@ img {
   align-items: center;
   gap: var(--s4);
   width: min(calc(100% - var(--s8)), var(--max-page));
-  margin: 0 auto;
+  margin: 0;
   border: 1px solid var(--hairline);
   border-radius: 0 0 calc(var(--radius) + 12px) calc(var(--radius) + 12px);
   padding: var(--s2) var(--s4);
@@ -1276,13 +1271,13 @@ body.mode-public .profile-column {
 
 body.mode-preview .site-header,
 body.mode-public .site-header {
-  width: min(calc(100% - 1.5rem), 1120px);
+  width: min(calc(100% - 1.5rem), var(--max-page));
   padding: var(--s2) var(--s4);
 }
 
 body.mode-preview .app-shell,
 body.mode-public .app-shell {
-  width: min(calc(100% - 1.5rem), 1120px);
+  width: min(calc(100% - 1.5rem), var(--max-page));
   grid-template-columns: minmax(245px, 300px) minmax(0, 1fr);
 }
 
@@ -1307,6 +1302,14 @@ body.mode-public .app-shell {
 @media (max-width: 760px) {
   :root {
     --radius: 18px;
+  }
+
+  body {
+    padding-top: var(--header-h-mobile);
+  }
+
+  html {
+    scroll-padding-top: calc(var(--header-h-mobile) + 1rem);
   }
 
   .site-header {
