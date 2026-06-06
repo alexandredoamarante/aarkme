@@ -606,9 +606,13 @@ async function updateAuthUI() {
     const user = await supabase.getCurrentUser();
     if (user) {
       const username = normalizeUsername(state.profile.username);
-      let display = (username && username !== 'nickname' && username !== 'aarkme.user') ? `@${username}` : user.email;
-      authStatus.textContent = display;
-      authStatus.title = user.email; // Show email on hover
+      // Simplify header: prefer @nickname, otherwise a very short version of email or @user
+      let display = (username && username !== 'nickname' && username !== 'aarkme.user')
+        ? `@${username}`
+        : `@${user.email.split('@')[0]}`;
+
+      authStatus.textContent = display.toLowerCase();
+      authStatus.title = user.email; // Full email remains on hover
       authStatus.hidden = false;
       signInBtn.hidden = true;
       signOutBtn.hidden = false;
@@ -1214,6 +1218,7 @@ function moveItem(kind, index, direction) {
 async function handleAction(action, target) {
   switch (action) {
     case 'sign-in': {
+      if (welcomeScreen) welcomeScreen.hidden = true;
       if (loginModal) {
         loginModal.hidden = false;
         if (loginEmail) loginEmail.focus();
