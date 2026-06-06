@@ -1216,6 +1216,7 @@ async function handleAction(action, target) {
     case 'sign-in': {
       if (loginModal) {
         loginModal.hidden = false;
+        if (welcomeScreen) welcomeScreen.hidden = true;
         if (loginEmail) loginEmail.focus();
       }
       break;
